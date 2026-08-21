@@ -104,6 +104,10 @@
             body {
                 margin: 0;
             }
+            .page-break {
+                page-break-before: always;
+                break-before: page;
+            }
         }
     </style>
 </head>
@@ -283,6 +287,47 @@
             </tbody>
         </table>
     </div>
+
+    <!-- Section: Appended Documents -->
+    <?php if (!empty($documents)) { ?>
+        <?php foreach ($documents as $doc) { ?>
+            <div class="page-break" style="text-align: center; padding-top: 20px;">
+                <h2 style="color: #1e3a8a; font-size: 18px; margin-bottom: 20px; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; text-align: left;">
+                    <?php
+                    // Find document label
+                    $label = 'Document';
+                    foreach ($documentTypes as $dt) {
+                        if ($dt['key'] === $doc['document_type']) {
+                            $label = $dt['label'];
+                            break;
+                        }
+                    }
+                    echo e($label);
+                    ?>
+                </h2>
+                <div style="margin-top: 20px; text-align: center;">
+                    <?php 
+                    $ext = strtolower(pathinfo($doc['file_name'], PATHINFO_EXTENSION));
+                    $file_url = base_url($doc['file_path']);
+                    
+                    if (in_array($ext, ['jpg', 'jpeg', 'png'])) {
+                    ?>
+                        <img src="<?php echo $file_url; ?>" style="max-width: 100%; max-height: 850px; object-fit: contain; border: 1px solid #ddd; padding: 5px; box-shadow: 0 0 5px rgba(0,0,0,0.1);" />
+                    <?php } elseif ($ext === 'pdf') { ?>
+                        <div style="width: 100%; height: 950px; border: 1px solid #ddd; border-radius: 4px; overflow: hidden;">
+                            <embed src="<?php echo $file_url; ?>" type="application/pdf" style="width: 100%; height: 100%; border: none;" />
+                        </div>
+                    <?php } else { ?>
+                        <div style="padding: 40px; border: 1px dashed #ccc; background-color: #f9f9f9; border-radius: 4px; display: inline-block;">
+                            <p style="font-size: 16px; margin: 0 0 10px 0;"><strong><?php echo e($doc['file_name']); ?></strong></p>
+                            <p style="color: #666; margin: 0 0 15px 0;">Non-image/PDF document file type.</p>
+                            <a href="<?php echo $file_url; ?>" target="_blank" style="display: inline-block; padding: 8px 15px; background-color: #3b82f6; color: #fff; text-decoration: none; border-radius: 4px; font-weight: bold;">View / Download File</a>
+                        </div>
+                    <?php } ?>
+                </div>
+            </div>
+        <?php } ?>
+    <?php } ?>
 
     <script>
         window.onload = function() {
