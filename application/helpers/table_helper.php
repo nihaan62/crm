@@ -42,6 +42,10 @@ hooks()->add_action('admin_init', function () {
     );
 
     App_table::register(
+        App_table::new('converted_leads')->customfieldable('leads')
+    );
+
+    App_table::register(
         App_table::new('subscriptions')
     );
 
