@@ -7,4 +7,4 @@
 .vscode/
 *.log
 /node_modules/
-/application/config/
+/application/config/app-config.php
