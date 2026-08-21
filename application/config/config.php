@@ -1,7 +1,9 @@
 <?php
 
 defined('BASEPATH') or exit('No direct script access allowed');
-define('APP_MINIMUM_REQUIRED_PHP_VERSION', '8.1');
+if (!defined('APP_MINIMUM_REQUIRED_PHP_VERSION')) {
+    define('APP_MINIMUM_REQUIRED_PHP_VERSION', '8.1');
+}
 
 if (file_exists(APPPATH . 'config/app-config.php')) {
     if (version_compare(PHP_VERSION, APP_MINIMUM_REQUIRED_PHP_VERSION) === -1) {
