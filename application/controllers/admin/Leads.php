@@ -1359,4 +1359,211 @@ class Leads extends AdminController
         $this->zip->download('files.zip');
         $this->zip->clear_data();
     }
+
+    public function get_loan_details($lead_id)
+    {
+        if (!is_staff_member() || !$this->leads_model->staff_can_access_lead($lead_id)) {
+            ajax_access_denied();
+        }
+
+        $this->db->where('lead_id', $lead_id);
+        $details = $this->db->get(db_prefix() . 'lead_loan_details')->row();
+
+        $this->db->where('lead_id', $lead_id);
+        $documents = $this->db->get(db_prefix() . 'lead_loan_documents')->result_array();
+
+        $lead = $this->leads_model->get($lead_id);
+
+        echo json_encode([
+            'details' => $details ?: (object)[],
+            'documents' => $documents,
+            'lead' => $lead
+        ]);
+    }
+
+    public function save_loan_details()
+    {
+        if (!is_staff_member()) {
+            ajax_access_denied();
+        }
+
+        $lead_id = $this->input->post('lead_id');
+        if (!$this->leads_model->staff_can_access_lead($lead_id)) {
+            ajax_access_denied();
+        }
+
+        $data = [
+            'profession_type' => $this->input->post('profession_type'),
+            'loan_type' => $this->input->post('loan_type'),
+            'mother_name' => $this->input->post('mother_name'),
+            'co_applicant_name' => $this->input->post('co_applicant_name'),
+            'co_applicant_mother_name' => $this->input->post('co_applicant_mother_name'),
+            'co_applicant_mobile' => $this->input->post('co_applicant_mobile'),
+            'co_applicant_email' => $this->input->post('co_applicant_email'),
+            'co_applicant_address' => $this->input->post('co_applicant_address'),
+            'ref1_name' => $this->input->post('ref1_name'),
+            'ref1_phone' => $this->input->post('ref1_phone'),
+            'ref2_name' => $this->input->post('ref2_name'),
+            'ref2_phone' => $this->input->post('ref2_phone'),
+        ];
+
+        $this->db->where('lead_id', $lead_id);
+        $exists = $this->db->get(db_prefix() . 'lead_loan_details')->row();
+
+        if ($exists) {
+            $this->db->where('lead_id', $lead_id);
+            $success = $this->db->update(db_prefix() . 'lead_loan_details', $data);
+        } else {
+            $data['lead_id'] = $lead_id;
+            $success = $this->db->insert(db_prefix() . 'lead_loan_details', $data);
+        }
+
+        echo json_encode([
+            'success' => $success ? true : false,
+            'message' => $success ? 'Details saved successfully.' : 'Failed to save details.'
+        ]);
+    }
+
+    public function upload_loan_document($lead_id)
+    {
+        if (!is_staff_member() || !$this->leads_model->staff_can_access_lead($lead_id)) {
+            ajax_access_denied();
+        }
+
+        $document_type = $this->input->post('document_type');
+        if (!$document_type) {
+            echo json_encode(['success' => false, 'message' => 'Missing document type.']);
+            return;
+        }
+
+        $path = FCPATH . 'uploads/lead_loan_documents/';
+        if (!is_dir($path)) {
+            mkdir($path, 0755);
+        }
+
+        $config['upload_path']   = $path;
+        $config['allowed_types'] = 'jpg|jpeg|png|pdf|doc|docx|xls|xlsx|zip';
+        $config['max_size']      = 20480; 
+        $config['encrypt_name']  = true;
+
+        $this->load->library('upload', $config);
+
+        if (!$this->upload->do_upload('file')) {
+            echo json_encode([
+                'success' => false,
+                'message' => $this->upload->display_errors('', '')
+            ]);
+        } else {
+            $upload_data = $this->upload->data();
+            
+            $doc_data = [
+                'lead_id' => $lead_id,
+                'document_type' => $document_type,
+                'file_name' => $upload_data['client_name'],
+                'file_path' => 'uploads/lead_loan_documents/' . $upload_data['file_name'],
+                'date_uploaded' => date('Y-m-d H:i:s')
+            ];
+
+            $this->db->where('lead_id', $lead_id);
+            $this->db->where('document_type', $document_type);
+            $prev = $this->db->get(db_prefix() . 'lead_loan_documents')->row();
+            if ($prev) {
+                if (file_exists(FCPATH . $prev->file_path)) {
+                    @unlink(FCPATH . $prev->file_path);
+                }
+                $this->db->where('id', $prev->id);
+                $this->db->delete(db_prefix() . 'lead_loan_documents');
+            }
+
+            $success = $this->db->insert(db_prefix() . 'lead_loan_documents', $doc_data);
+            
+            echo json_encode([
+                'success' => $success ? true : false,
+                'message' => $success ? 'Document uploaded successfully.' : 'Failed to save database record.',
+                'document' => $doc_data
+            ]);
+        }
+    }
+
+    public function delete_loan_document($doc_id)
+    {
+        if (!is_staff_member()) {
+            ajax_access_denied();
+        }
+
+        $this->db->where('id', $doc_id);
+        $doc = $this->db->get(db_prefix() . 'lead_loan_documents')->row();
+
+        if ($doc) {
+            if (!$this->leads_model->staff_can_access_lead($doc->lead_id)) {
+                ajax_access_denied();
+            }
+
+            if (file_exists(FCPATH . $doc->file_path)) {
+                @unlink(FCPATH . $doc->file_path);
+            }
+
+            $this->db->where('id', $doc_id);
+            $success = $this->db->delete(db_prefix() . 'lead_loan_documents');
+
+            echo json_encode([
+                'success' => $success ? true : false,
+                'message' => 'Document deleted.'
+            ]);
+        } else {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Document not found.'
+            ]);
+        }
+    }
+
+    public function print_lead_details($lead_id)
+    {
+        if (!is_staff_member() || !$this->leads_model->staff_can_access_lead($lead_id)) {
+            access_denied('Print Lead');
+        }
+
+        $lead = $this->leads_model->get($lead_id);
+        
+        $this->db->where('lead_id', $lead_id);
+        $details = $this->db->get(db_prefix() . 'lead_loan_details')->row();
+
+        $this->db->where('lead_id', $lead_id);
+        $documents = $this->db->get(db_prefix() . 'lead_loan_documents')->result_array();
+
+        $data = [
+            'lead' => $lead,
+            'details' => $details ?: (object)[],
+            'documents' => $documents,
+            'title' => 'Lead Summary - ' . $lead->name
+        ];
+
+        $this->load->view('admin/leads/print_lead_details', $data);
+    }
+
+    public function converted_leads()
+    {
+        if (!is_staff_member()) {
+            access_denied('Converted Leads');
+        }
+
+        $data['switch_kanban'] = false;
+        $data['statuses'] = $this->leads_model->get_status();
+        $data['sources']  = $this->leads_model->get_source();
+        $data['title']    = 'Converted Leads';
+        $data['table'] = App_table::find('converted_leads');
+
+        $this->load->view('admin/leads/manage_converted_leads', $data);
+    }
+
+    public function converted_leads_table()
+    {
+        if (!is_staff_member()) {
+            ajax_access_denied();
+        }
+
+        App_table::find('converted_leads')->output();
+    }
 }
+

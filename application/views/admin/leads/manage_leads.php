@@ -261,6 +261,11 @@
                                     'th_attrs' => ['class' => 'date-created toggleable', 'id' => 'th-date-created'],
                                 ];
 
+                                $_table_data[] = [
+                                     'name'     => 'Details',
+                                     'th_attrs' => ['class' => 'toggleable', 'id' => 'th-details'],
+                                 ];
+
                                 foreach ($_table_data as $_t) {
                                     array_push($table_data, $_t);
                                 }
@@ -302,6 +307,7 @@
     <?= get_staff_meta(get_staff_user_id(), 'hidden-columns-table-leads'); ?>
 </script>
 <?php include_once APPPATH . 'views/admin/leads/status.php'; ?>
+<?php include_once APPPATH . 'views/admin/leads/loan_details_modal.php'; ?>
 <?php init_tail(); ?>
 <script>
     var openLeadID = '<?= e($leadid); ?>';

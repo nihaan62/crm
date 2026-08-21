@@ -183,10 +183,26 @@ function app_init_admin_sidebar_menu_items()
 
     if (is_staff_member()) {
         $CI->app_menu->add_sidebar_menu_item('leads', [
+            'collapse' => true,
             'name'     => _l('als_leads'),
-            'href'     => admin_url('leads'),
             'icon'     => 'fa-solid fa-crosshairs',
             'position' => 45,
+            'badge'    => [],
+        ]);
+
+        $CI->app_menu->add_sidebar_children_item('leads', [
+            'slug'     => 'leads-all',
+            'name'     => 'All Leads',
+            'href'     => admin_url('leads'),
+            'position' => 5,
+            'badge'    => [],
+        ]);
+
+        $CI->app_menu->add_sidebar_children_item('leads', [
+            'slug'     => 'leads-converted',
+            'name'     => 'Converted Leads',
+            'href'     => admin_url('leads/converted_leads'),
+            'position' => 10,
             'badge'    => [],
         ]);
     }

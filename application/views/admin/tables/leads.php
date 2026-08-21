@@ -259,6 +259,9 @@ return App_table::find('leads')
 
             $row[] = '<span data-toggle="tooltip" data-title="' . e(_dt($aRow['dateadded'])) . '" class="text-has-action is-date">' . e(time_ago($aRow['dateadded'])) . '</span>';
 
+            // Details Button
+            $row[] = '<button type="button" class="btn btn-info btn-xs" onclick="initLeadLoanDetails(' . $aRow['id'] . '); return false;"><i class="fa fa-edit"></i> Details</button>';
+
             // Custom fields add values
             foreach ($customFieldsColumns as $customFieldColumn) {
                 $row[] = (strpos($customFieldColumn, 'date_picker_') !== false ? _d($aRow[$customFieldColumn]) : $aRow[$customFieldColumn]);
