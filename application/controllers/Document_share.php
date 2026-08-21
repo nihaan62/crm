@@ -122,11 +122,19 @@ class Document_share extends ClientsController
 
         $path = FCPATH . 'uploads/lead_loan_documents/';
         if (!is_dir($path)) {
-            mkdir($path, 0755);
+            mkdir($path, 0777, true);
+        }
+
+        // Validate extension manually to bypass CodeIgniter's strict MIME check bug
+        $ext = strtolower(pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION));
+        $allowed_exts = ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'zip'];
+        if (!in_array($ext, $allowed_exts)) {
+            echo json_encode(['success' => false, 'message' => 'The filetype you are attempting to upload is not allowed. (Allowed: ' . implode(', ', $allowed_exts) . ')']);
+            return;
         }
 
         $config['upload_path']   = $path;
-        $config['allowed_types'] = 'jpg|jpeg|png|pdf|doc|docx|xls|xlsx|zip';
+        $config['allowed_types'] = '*';
         $config['max_size']      = 20480; // 20MB
         $config['encrypt_name']  = true;
 
