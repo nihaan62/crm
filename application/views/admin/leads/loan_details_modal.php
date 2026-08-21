@@ -127,6 +127,7 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const siteUrl = '<?php echo site_url(); ?>';
     // Shared state
     let activeLeadId = null;
     let currentDetails = {};
@@ -222,7 +223,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 statusHtml = '<span class="badge bg-success" style="background-color: #22c55e; color: #fff; padding: 5px 8px;">Uploaded</span>';
                 actionHtml = `
                     <div style="display: flex; gap: 10px; align-items: center;">
-                        <a href="${site_url + uploaded.file_path}" target="_blank" class="btn btn-default btn-xs" style="margin-right: 5px;"><i class="fa fa-eye"></i> View File</a>
+                        <a href="${siteUrl + uploaded.file_path}" target="_blank" class="btn btn-default btn-xs" style="margin-right: 5px;"><i class="fa fa-eye"></i> View File</a>
                         <button type="button" class="btn btn-danger btn-xs delete-doc-btn" data-id="${uploaded.id}"><i class="fa fa-remove"></i> Delete</button>
                     </div>
                 `;
