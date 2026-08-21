@@ -326,6 +326,8 @@
                     <?php } ?>
                 </div>
             </div>
+            <!-- Blank page printed after each document -->
+            <div class="page-break" style="height: 1px; visibility: hidden;">&nbsp;</div>
         <?php } ?>
     <?php } ?>
 
