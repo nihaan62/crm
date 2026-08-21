@@ -67,9 +67,10 @@ return App_table::find('converted_leads')
             $row = [];
 
             // 1. Status Dropdown Column
+            $status_color = $aRow['status_color'] ?: '#777777';
             $outputStatus = '';
             $outputStatus .= '<div class="dropdown inline-block">';
-            $outputStatus .= '<a href="#" class="dropdown-toggle label" style="color:' . $aRow['status_color'] . ';border:1px solid ' . adjust_hex_brightness($aRow['status_color'], 0.4) . ';background: ' . adjust_hex_brightness($aRow['status_color'], 0.04) . ';padding: 5px 10px;" id="tableLeadsStatus-' . $aRow['id'] . '" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">';
+            $outputStatus .= '<a href="#" class="dropdown-toggle label" style="color:' . $status_color . ';border:1px solid ' . adjust_hex_brightness($status_color, 0.4) . ';background: ' . adjust_hex_brightness($status_color, 0.04) . ';padding: 5px 10px;" id="tableLeadsStatus-' . $aRow['id'] . '" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">';
             $outputStatus .= e($aRow['status_name'] ?: 'Converted');
             $outputStatus .= ' <i class="fa fa-caret-down"></i>';
             $outputStatus .= '</a>';
