@@ -155,6 +155,8 @@
     <!-- Custom AJAX handling script -->
     <script>
         const hash = '<?php echo $hash; ?>';
+        const csrfName = '<?php echo $this->security->get_csrf_token_name(); ?>';
+        const csrfHash = '<?php echo $this->security->get_csrf_hash(); ?>';
 
         function showAlert(type, message) {
             const container = $('#alert_container');
@@ -173,6 +175,7 @@
             const form = $(this);
             const key = form.find('input[name="document_type"]').val();
             const formData = new FormData(this);
+            formData.append(csrfName, csrfHash);
 
             form.find('button').prop('disabled', true).text('Uploading...');
 
@@ -227,9 +230,10 @@
             const docId = btn.data('id');
             const key = btn.data('key');
 
-            btn.prop('disabled', true).text('Deleting...');
+            const postData = {};
+            postData[csrfName] = csrfHash;
 
-            $.post('<?php echo site_url("document_share/delete/"); ?>' + hash + '/' + docId, function(response) {
+            $.post('<?php echo site_url("document_share/delete/"); ?>' + hash + '/' + docId, postData, function(response) {
                 const res = JSON.parse(response);
                 if (res.success) {
                     showAlert('success', 'Document deleted successfully.');

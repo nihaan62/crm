@@ -301,6 +301,9 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         const form = $(this);
         const formData = new FormData(this);
+        if (typeof(csrfData) !== 'undefined') {
+            formData.append(csrfData.token_name, csrfData.hash);
+        }
         
         form.find('button[type="submit"]').prop('disabled', true).text('Uploading...');
 

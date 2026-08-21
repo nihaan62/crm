@@ -38,6 +38,7 @@
         <?php } ?>
 
         <form action="<?php echo site_url('document_share/login/' . $hash); ?>" method="POST" class="space-y-6 relative z-10">
+            <input type="hidden" name="<?php echo $this->security->get_csrf_token_name(); ?>" value="<?php echo $this->security->get_csrf_hash(); ?>">
             <div>
                 <label for="email" class="block text-sm font-semibold text-neutral-300 mb-2">Email Address</label>
                 <input type="email" name="email" id="email" required
