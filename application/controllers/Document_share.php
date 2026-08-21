@@ -153,7 +153,7 @@ class Document_share extends ClientsController
                 'document_type' => $document_type,
                 'file_name'     => $upload_data['client_name'],
                 'file_path'     => 'uploads/lead_loan_documents/' . $upload_data['file_name'],
-                'date_uploaded' => date('Y-m-d H:i:s')
+                'uploaded_at'   => date('Y-m-d H:i:s')
             ];
 
             // Delete previous document of same type

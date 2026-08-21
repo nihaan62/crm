@@ -1469,7 +1469,7 @@ class Leads extends AdminController
                 'document_type' => $document_type,
                 'file_name' => $upload_data['client_name'],
                 'file_path' => 'uploads/lead_loan_documents/' . $upload_data['file_name'],
-                'date_uploaded' => date('Y-m-d H:i:s')
+                'uploaded_at' => date('Y-m-d H:i:s')
             ];
 
             $this->db->where('lead_id', $lead_id);
