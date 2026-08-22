@@ -2,9 +2,9 @@
 
 defined('BASEPATH') or exit('No direct script access allowed');
 
-hooks()->add_filter('staff_permissions', 'register_converted_leads_permissions');
+hooks()->add_filter('staff_permissions', 'register_converted_leads_permissions', 10, 2);
 
-function register_converted_leads_permissions($permissions, $data)
+function register_converted_leads_permissions($permissions, $data = [])
 {
     $permissions['converted_leads'] = [
         'name'         => 'Converted Leads',
