@@ -97,6 +97,10 @@ class Import_leads extends App_import
                         $insert['assigned'] = $this->ci->input->post('responsible');
                     }
 
+                    if ($this->ci->input->post('batch_name')) {
+                        $insert['batch_name'] = $this->ci->input->post('batch_name');
+                    }
+
                     $tags = '';
 
                     if (isset($insert['tags']) || is_null($insert['tags'])) {

@@ -209,6 +209,15 @@ function app_init_admin_sidebar_menu_items()
         }
     }
 
+    if (staff_can('view', 'cold_wp_messages')) {
+        $CI->app_menu->add_sidebar_menu_item('cold-wp', [
+            'name'     => 'Cold WP Messages',
+            'href'     => admin_url('cold_wp'),
+            'position' => 47,
+            'icon'     => 'fa-brands fa-whatsapp',
+        ]);
+    }
+
     if ((staff_can('view',  'estimate_request') || staff_can('view_own',  'estimate_request'))) {
         $CI->app_menu->add_sidebar_menu_item('estimate_request', [
             'name'     => _l('estimate_request'),

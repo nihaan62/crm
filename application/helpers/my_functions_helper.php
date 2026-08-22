@@ -15,5 +15,13 @@ function register_converted_leads_permissions($permissions, $data)
             'delete' => 'Delete',
         ]
     ];
+    $permissions['cold_wp_messages'] = [
+        'name'         => 'Cold WP Messages',
+        'capabilities' => [
+            'view'   => 'View (Global)',
+            'create' => 'Create',
+            'delete' => 'Delete',
+        ]
+    ];
     return $permissions;
 }

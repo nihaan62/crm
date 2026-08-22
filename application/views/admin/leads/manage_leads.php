@@ -191,6 +191,8 @@
                                                 <div class="modal-footer">
                                                     <button type="button" class="btn btn-default"
                                                         data-dismiss="modal"><?= _l('close'); ?></button>
+                                                    <a href="#" class="btn btn-success" style="background-color: #25d366; border-color: #25d366; color: #fff;"
+                                                        onclick="send_cold_wp_bulk_action(); return false;"><i class="fa fa-whatsapp"></i> Send Cold WP Message</a>
                                                     <a href="#" class="btn btn-primary"
                                                         onclick="leads_bulk_action(this); return false;"><?= _l('confirm'); ?></a>
                                                 </div>
@@ -364,6 +366,24 @@
             $('#lead_call_options_modal').modal('show');
         });
     });
+
+    function send_cold_wp_bulk_action() {
+        var ids = [];
+        var rows = $('.table-leads').find('tbody tr');
+        $.each(rows, function() {
+            var checkbox = $(this).find('td:first-child input[type="checkbox"]');
+            if (checkbox.prop('checked') === true) {
+                ids.push(checkbox.val());
+            }
+        });
+        
+        if (ids.length === 0) {
+            alert_float('warning', 'Please select at least one lead.');
+            return;
+        }
+        
+        window.location.href = admin_url + 'cold_wp?ids=' + ids.join(',');
+    }
 </script>
 </body>
 
