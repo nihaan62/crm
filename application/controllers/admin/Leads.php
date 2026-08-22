@@ -1730,6 +1730,9 @@ class Leads extends AdminController
 
     public function update_converted_lead_status()
     {
+        ini_set('display_errors', 1);
+        error_reporting(E_ALL);
+
         if (!is_staff_member()) {
             ajax_access_denied();
         }
