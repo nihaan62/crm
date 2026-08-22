@@ -1730,90 +1730,95 @@ class Leads extends AdminController
 
     public function update_converted_lead_status()
     {
-        ini_set('display_errors', 1);
-        error_reporting(E_ALL);
-
-        if (!is_staff_member()) {
-            ajax_access_denied();
-        }
-
-        if ($this->input->post()) {
-            $lead_id = $this->input->post('leadid');
-            $status_id = $this->input->post('status');
-
-            // 1. Get old status name
-            $this->db->select('status');
-            $this->db->where('id', $lead_id);
-            $_old = $this->db->get(db_prefix() . 'leads')->row();
-            $old_status_name = 'N/A';
-            if ($_old) {
-                $old_status_obj = $this->leads_model->get_status($_old->status);
-                if ($old_status_obj) {
-                    $old_status_name = $old_status_obj->name;
-                }
+        try {
+            if (!is_staff_member()) {
+                ajax_access_denied();
             }
 
-            // 2. Get new status name
-            $new_status_obj = $this->leads_model->get_status($status_id);
-            $new_status_name = $new_status_obj ? $new_status_obj->name : 'Unknown';
+            if ($this->input->post()) {
+                $lead_id = $this->input->post('leadid');
+                $status_id = $this->input->post('status');
 
-            $proof_path = null;
-
-            // 3. If new status is "Printed" (ID 8), handle proof upload
-            if ($status_id == 8) {
-                if (!empty($_FILES['proof']['name'])) {
-                    $path = FCPATH . 'uploads/lead_loan_documents/';
-                    if (!is_dir($path)) {
-                        mkdir($path, 0777, true);
+                // 1. Get old status name
+                $this->db->select('status');
+                $this->db->where('id', $lead_id);
+                $_old = $this->db->get(db_prefix() . 'leads')->row();
+                $old_status_name = 'N/A';
+                if ($_old) {
+                    $old_status_obj = $this->leads_model->get_status($_old->status);
+                    if ($old_status_obj) {
+                        $old_status_name = $old_status_obj->name;
                     }
+                }
 
-                    $ext = strtolower(pathinfo($_FILES['proof']['name'], PATHINFO_EXTENSION));
-                    $allowed_exts = ['jpg', 'jpeg', 'png', 'pdf'];
-                    if (!in_array($ext, $allowed_exts)) {
-                        echo json_encode(['success' => false, 'message' => 'Proof must be an image or PDF file.']);
-                        return;
-                    }
+                // 2. Get new status name
+                $new_status_obj = $this->leads_model->get_status($status_id);
+                $new_status_name = $new_status_obj ? $new_status_obj->name : 'Unknown';
 
-                    $config['upload_path']   = $path;
-                    $config['allowed_types'] = '*';
-                    $config['max_size']      = 20480;
-                    $config['encrypt_name']  = true;
+                $proof_path = null;
 
-                    $this->load->library('upload', $config);
-                    if ($this->upload->do_upload('proof')) {
-                        $upload_data = $this->upload->data();
-                        $proof_path = 'uploads/lead_loan_documents/' . $upload_data['file_name'];
+                // 3. If new status is "Printed" (ID 8), handle proof upload
+                if ($status_id == 8) {
+                    if (!empty($_FILES['proof']['name'])) {
+                        $path = FCPATH . 'uploads/lead_loan_documents/';
+                        if (!is_dir($path)) {
+                            mkdir($path, 0777, true);
+                        }
+
+                        $ext = strtolower(pathinfo($_FILES['proof']['name'], PATHINFO_EXTENSION));
+                        $allowed_exts = ['jpg', 'jpeg', 'png', 'pdf'];
+                        if (!in_array($ext, $allowed_exts)) {
+                            echo json_encode(['success' => false, 'message' => 'Proof must be an image or PDF file.']);
+                            return;
+                        }
+
+                        $config['upload_path']   = $path;
+                        $config['allowed_types'] = '*';
+                        $config['max_size']      = 20480;
+                        $config['encrypt_name']  = true;
+
+                        $this->load->library('upload', $config);
+                        if ($this->upload->do_upload('proof')) {
+                            $upload_data = $this->upload->data();
+                            $proof_path = 'uploads/lead_loan_documents/' . $upload_data['file_name'];
+                        } else {
+                            echo json_encode(['success' => false, 'message' => 'Failed to upload proof: ' . $this->upload->display_errors('', '')]);
+                            return;
+                        }
                     } else {
-                        echo json_encode(['success' => false, 'message' => 'Failed to upload proof: ' . $this->upload->display_errors('', '')]);
+                        echo json_encode(['success' => false, 'message' => 'Proof file is required when marking as Printed.']);
                         return;
                     }
-                } else {
-                    echo json_encode(['success' => false, 'message' => 'Proof file is required when marking as Printed.']);
-                    return;
                 }
+
+                // 4. Update lead status in leads table
+                $this->db->where('id', $lead_id);
+                $this->db->update(db_prefix() . 'leads', ['status' => $status_id]);
+
+                // 5. Get current logged in staff name
+                $changed_by = get_staff_full_name();
+
+                // 6. Save history record
+                $history_data = [
+                    'lead_id' => $lead_id,
+                    'old_status' => $old_status_name,
+                    'new_status' => $new_status_name,
+                    'changed_by' => $changed_by,
+                    'proof_path' => $proof_path
+                ];
+                $this->db->insert(db_prefix() . 'lead_loan_status_history', $history_data);
+
+                // Log activity in standard Perfex lead activity log
+                $this->leads_model->log_lead_activity($lead_id, 'Status changed from ' . $old_status_name . ' to ' . $new_status_name . ' by ' . $changed_by);
+
+                echo json_encode(['success' => true, 'message' => 'Status updated successfully.']);
+                return;
             }
-
-            // 4. Update lead status in leads table
-            $this->db->where('id', $lead_id);
-            $this->db->update(db_prefix() . 'leads', ['status' => $status_id]);
-
-            // 5. Get current logged in staff name
-            $changed_by = get_staff_full_name();
-
-            // 6. Save history record
-            $history_data = [
-                'lead_id' => $lead_id,
-                'old_status' => $old_status_name,
-                'new_status' => $new_status_name,
-                'changed_by' => $changed_by,
-                'proof_path' => $proof_path
-            ];
-            $this->db->insert(db_prefix() . 'lead_loan_status_history', $history_data);
-
-            // Log activity in standard Perfex lead activity log
-            $this->leads_model->log_lead_activity($lead_id, 'Status changed from ' . $old_status_name . ' to ' . $new_status_name . ' by ' . $changed_by);
-
-            echo json_encode(['success' => true, 'message' => 'Status updated successfully.']);
+        } catch (Throwable $e) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'PHP Error: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine()
+            ]);
             return;
         }
     }
