@@ -1,4 +1,21 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
+<style>
+.table-checklist tr {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.table-checklist tr:hover {
+    background-color: #f1f5f9;
+}
+.table-checklist tr.selected-row {
+    background-color: #e2e8f0 !important;
+    border-left: 4px solid #3b82f6;
+}
+.table-checklist tr.drag-over {
+    background-color: #dbeafe !important;
+    border: 2px dashed #2563eb !important;
+}
+</style>
 <div class="modal fade" id="lead_loan_details_modal" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
@@ -19,6 +36,9 @@
                         </li>
                         <li role="presentation">
                             <a href="#tab_checklist" aria-controls="tab_checklist" role="tab" data-toggle="tab">Documents Checklist</a>
+                        </li>
+                        <li role="presentation">
+                            <a href="#tab_status_history" aria-controls="tab_status_history" role="tab" data-toggle="tab">Status History</a>
                         </li>
                     </ul>
                 </div>
@@ -101,11 +121,19 @@
 
                     <!-- Tab: Documents Checklist -->
                     <div role="tabpanel" class="tab-pane" id="tab_checklist">
-                        <div class="alert alert-info">
-                            Upload required documents for the checklist below. Accepted file types: JPEG, PNG, PDF, DOCX, XLSX, ZIP. Max size: 20MB.
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; gap: 15px;">
+                            <div class="alert alert-info" style="margin-bottom: 0; flex-grow: 1;">
+                                Upload documents below. <strong>Tip:</strong> Click a row to select it, then paste (Ctrl+V) or drag & drop files directly onto the row!
+                            </div>
+                            <form id="upload_zip_form" style="display: inline-block; shrink: 0;">
+                                <input type="file" id="zip_file_input" name="file" accept=".zip" style="display: none;">
+                                <button type="button" class="btn btn-warning" onclick="$('#zip_file_input').click();">
+                                    <i class="fa fa-file-zip-o"></i> Upload ZIP (Auto-Map)
+                                </button>
+                            </form>
                         </div>
                         <div class="table-responsive">
-                            <table class="table table-hover table-bordered checklist-table">
+                            <table class="table table-hover table-bordered checklist-table table-checklist">
                                 <thead>
                                     <tr>
                                         <th width="40%">Document Requirement</th>
@@ -115,6 +143,29 @@
                                 </thead>
                                 <tbody id="checklist_tbody">
                                     <!-- Dynamic rows inserted by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Tab: Status History -->
+                    <div role="tabpanel" class="tab-pane" id="tab_status_history">
+                        <div class="alert alert-info">
+                            Below is the historical log of all status changes for this lead, including date, time, and staff attribution.
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Old Status</th>
+                                        <th>New Status</th>
+                                        <th>Changed By</th>
+                                        <th>Date & Time</th>
+                                        <th>Proof File</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="status_history_tbody">
+                                    <!-- Populated dynamically via JS -->
                                 </tbody>
                             </table>
                         </div>
@@ -195,6 +246,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Render Checklist
             renderChecklist();
+
+            // Render Status History
+            renderStatusHistory(response.status_history || []);
 
             // Show Modal
             $('#lead_loan_details_modal').modal('show');
@@ -353,6 +407,180 @@ document.addEventListener('DOMContentLoaded', function() {
                 btn.prop('disabled', false).html('<i class="fa fa-remove"></i> Delete');
             }
         });
+    });
+
+    // Render Status History
+    function renderStatusHistory(history) {
+        const tbody = $('#status_history_tbody');
+        tbody.empty();
+        
+        if (!history || history.length === 0) {
+            tbody.append('<tr><td colspan="5" class="text-center text-muted">No status history found for this lead.</td></tr>');
+            return;
+        }
+        
+        history.forEach(item => {
+            let proofHtml = 'N/A';
+            if (item.proof_path) {
+                proofHtml = `<a href="${siteUrl + item.proof_path}" target="_blank" class="btn btn-default btn-xs"><i class="fa fa-eye"></i> View Proof</a>`;
+            }
+            
+            const row = `
+                <tr>
+                    <td>${item.old_status || 'N/A'}</td>
+                    <td class="bold">${item.new_status}</td>
+                    <td>${item.changed_by}</td>
+                    <td>${item.changed_at}</td>
+                    <td>${proofHtml}</td>
+                </tr>
+            `;
+            tbody.append(row);
+        });
+    }
+
+    // Helper function to upload document file (used by drag-drop and paste)
+    function uploadDocumentFile(file, doc_key) {
+        const tr = $(`.table-checklist tr[data-key="${doc_key}"]`);
+        const actionTd = tr.find('td:last-child');
+        const originalHtml = actionTd.html();
+        
+        actionTd.html('<span class="text-muted"><i class="fa fa-spinner fa-spin"></i> Uploading...</span>');
+        
+        const formData = new FormData();
+        formData.append('document_type', doc_key);
+        formData.append('file', file);
+        if (typeof(csrfData) !== 'undefined') {
+            formData.append(csrfData.token_name, csrfData.hash);
+        }
+        
+        $.ajax({
+            url: admin_url + 'leads/upload_loan_document/' + activeLeadId,
+            type: 'POST',
+            data: formData,
+            contentType: false,
+            processData: false,
+            success: function(response) {
+                const res = JSON.parse(response);
+                if (res.success) {
+                    alert_float('success', res.message);
+                    currentDocuments = currentDocuments.filter(d => d.document_type !== doc_key);
+                    currentDocuments.push(res.document);
+                    renderChecklist();
+                } else {
+                    alert_float('danger', res.message);
+                    actionTd.html(originalHtml);
+                }
+            },
+            error: function() {
+                alert_float('danger', 'An error occurred during file upload.');
+                actionTd.html(originalHtml);
+            }
+        });
+    }
+
+    // Handle ZIP File Upload
+    $('#zip_file_input').on('change', function() {
+        const file = this.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+        if (typeof(csrfData) !== 'undefined') {
+            formData.append(csrfData.token_name, csrfData.hash);
+        }
+
+        alert_float('info', 'Processing ZIP archive, please wait...');
+
+        $.ajax({
+            url: admin_url + 'leads/upload_loan_document_zip/' + activeLeadId,
+            type: 'POST',
+            data: formData,
+            contentType: false,
+            processData: false,
+            success: function(response) {
+                const res = JSON.parse(response);
+                if (res.success) {
+                    alert_float('success', res.message);
+                    
+                    // Reload checklist documents
+                    $.getJSON(admin_url + 'leads/get_loan_details/' + activeLeadId, function(data) {
+                        currentDocuments = data.documents || [];
+                        renderChecklist();
+                    });
+                } else {
+                    alert_float('danger', res.message);
+                }
+            },
+            error: function() {
+                alert_float('danger', 'An error occurred during ZIP upload.');
+            }
+        });
+
+        // Reset
+        $(this).val('');
+    });
+
+    // Select row on click for copy-paste
+    $(document).on('click', '.table-checklist tr[data-key]', function() {
+        $('.table-checklist tr').removeClass('selected-row');
+        $(this).addClass('selected-row');
+    });
+
+    // Handle paste event (Ctrl+V)
+    window.addEventListener('paste', function(e) {
+        if (!$('#lead_loan_details_modal').hasClass('show') && !$('#lead_loan_details_modal').is(':visible')) {
+            return;
+        }
+        if (!$('#tab_checklist').hasClass('active')) {
+            return;
+        }
+
+        const selectedRow = $('.table-checklist tr.selected-row');
+        if (selectedRow.length === 0) {
+            return;
+        }
+
+        const doc_key = selectedRow.data('key');
+        const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+        
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].kind === 'file') {
+                const file = items[i].getAsFile();
+                if (file) {
+                    uploadDocumentFile(file, doc_key);
+                    break;
+                }
+            }
+        }
+    });
+
+    // Handle Drag & Drop events on rows
+    $(document).on('dragover', '.table-checklist tr[data-key]', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        $(this).addClass('drag-over');
+    });
+
+    $(document).on('dragleave', '.table-checklist tr[data-key]', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        $(this).removeClass('drag-over');
+    });
+
+    $(document).on('drop', '.table-checklist tr[data-key]', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const tr = $(this);
+        tr.removeClass('drag-over');
+        
+        const doc_key = tr.data('key');
+        const files = (e.originalEvent || e).dataTransfer.files;
+        
+        if (files && files.length > 0) {
+            const file = files[0];
+            uploadDocumentFile(file, doc_key);
+        }
     });
 });
 </script>

@@ -1370,14 +1370,16 @@ class Leads extends AdminController
         $details = $this->db->get(db_prefix() . 'lead_loan_details')->row();
 
         $this->db->where('lead_id', $lead_id);
-        $documents = $this->db->get(db_prefix() . 'lead_loan_documents')->result_array();
+        $this->db->order_by('changed_at', 'desc');
+        $history = $this->db->get(db_prefix() . 'lead_loan_status_history')->result_array();
 
         $lead = $this->leads_model->get($lead_id);
 
         echo json_encode([
             'details' => $details ?: (object)[],
             'documents' => $documents,
-            'lead' => $lead
+            'lead' => $lead,
+            'status_history' => $history
         ]);
     }
 
@@ -1493,6 +1495,153 @@ class Leads extends AdminController
         }
     }
 
+    public function upload_loan_document_zip($lead_id)
+    {
+        if (!is_staff_member() || !$this->leads_model->staff_can_access_lead($lead_id)) {
+            echo json_encode(['success' => false, 'message' => 'Access denied.']);
+            return;
+        }
+
+        if (empty($_FILES['file']['name'])) {
+            echo json_encode(['success' => false, 'message' => 'No file uploaded.']);
+            return;
+        }
+
+        $ext = strtolower(pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION));
+        if ($ext !== 'zip') {
+            echo json_encode(['success' => false, 'message' => 'Only ZIP files are allowed here.']);
+            return;
+        }
+
+        $path = FCPATH . 'uploads/lead_loan_documents/';
+        if (!is_dir($path)) {
+            mkdir($path, 0777, true);
+        }
+
+        // Upload zip file temporarily
+        $temp_zip = $path . uniqid() . '.zip';
+        if (!move_uploaded_file($_FILES['file']['tmp_name'], $temp_zip)) {
+            echo json_encode(['success' => false, 'message' => 'Failed to save uploaded ZIP file.']);
+            return;
+        }
+
+        // Unzip
+        $zip = new ZipArchive;
+        if ($zip->open($temp_zip) === TRUE) {
+            $extracted_files = [];
+            $unmapped_files = [];
+
+            // Define keyword mappings to document types
+            $mappings = [
+                'co_aadhar' => ['co_aadhar', 'co-aadhar', 'co applicant aadhar', 'co-applicant aadhar'],
+                'co_pan' => ['co_pan', 'co-pan', 'co applicant pan', 'co-applicant pan'],
+                'co_income' => ['co_income', 'co-income', 'co applicant income', 'co-applicant income'],
+                'co_photos' => ['co_photo', 'co-photo', 'co applicant photo', 'co-applicant photo'],
+                'co_savings_1yr' => ['co_savings', 'co-savings', 'co applicant savings', 'co-applicant savings'],
+                'co_itr_3yrs' => ['co_itr', 'co-itr', 'co applicant itr', 'co-applicant itr'],
+                'co_address' => ['co_address', 'co-address', 'co applicant address', 'co-applicant address'],
+                
+                'applicant_aadhar' => ['applicant_aadhar', 'applicant-aadhar', 'aadhar', 'adhar'],
+                'applicant_pan' => ['applicant_pan', 'applicant-pan', 'pan'],
+                'applicant_address' => ['applicant_address', 'applicant-address', 'address proof', 'residence proof'],
+                'bank_statement_1yr' => ['bank_statement', 'bank-statement', 'bank statement', '1yr bank', 'statement 1yr'],
+                'savings_statement' => ['savings_statement', 'savings-statement', 'savings account', 'savings bank'],
+                'photos_2' => ['photo', 'passport photo', 'photos'],
+                'tax_receipt' => ['tax_receipt', 'tax-receipt', 'tax paid', 'tax receipt'],
+                'loan_repayment' => ['repayment', 'sanction letter', 'loan repayment'],
+                'property_plan' => ['property_plan', 'property-plan', 'building plan', 'building permission', 'property details'],
+                'link_docs_13yrs' => ['link_docs', 'link-docs', 'link document', '13 years link', 'sales deed'],
+                'itr_3yrs' => ['itr', 'tax return', 'income tax'],
+                'business_proof' => ['business_proof', 'business-proof', 'proof of business', 'gst registration', 'udhyam'],
+                'gst_returns' => ['gst_returns', 'gst-returns', 'gst return']
+            ];
+
+            for ($i = 0; $i < $zip->numFiles; $i++) {
+                $filename = $zip->getNameIndex($i);
+                
+                // Skip directories and MAC OS metadata
+                if (substr($filename, -1) === '/' || strpos($filename, '__MACOSX') !== false || strpos($filename, '.DS_Store') !== false) {
+                    continue;
+                }
+
+                $file_info = pathinfo($filename);
+                $file_ext = isset($file_info['extension']) ? strtolower($file_info['extension']) : '';
+                
+                // Only allow images, PDFs, and office docs
+                if (!in_array($file_ext, ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx', 'xls', 'xlsx'])) {
+                    continue;
+                }
+
+                // Match filename to document type
+                $matched_type = null;
+                $lower_name = strtolower($file_info['filename']);
+
+                foreach ($mappings as $doc_key => $keywords) {
+                    foreach ($keywords as $kw) {
+                        if (strpos($lower_name, $kw) !== false) {
+                            $matched_type = $doc_key;
+                            break 2; // Found a match, break outer loop
+                        }
+                    }
+                }
+
+                if ($matched_type) {
+                    // Extract file content
+                    $content = $zip->getFromIndex($i);
+                    $new_filename = uniqid() . '.' . $file_ext;
+                    $dest_path = $path . $new_filename;
+
+                    if (file_put_contents($dest_path, $content) !== FALSE) {
+                        // Check if previous document exists and delete it
+                        $this->db->where('lead_id', $lead_id);
+                        $this->db->where('document_type', $matched_type);
+                        $prev = $this->db->get(db_prefix() . 'lead_loan_documents')->row();
+                        if ($prev) {
+                            if (file_exists(FCPATH . $prev->file_path)) {
+                                @unlink(FCPATH . $prev->file_path);
+                            }
+                            $this->db->where('id', $prev->id);
+                            $this->db->delete(db_prefix() . 'lead_loan_documents');
+                        }
+
+                        // Insert new document record
+                        $doc_data = [
+                            'lead_id' => $lead_id,
+                            'document_type' => $matched_type,
+                            'file_name' => $file_info['basename'],
+                            'file_path' => 'uploads/lead_loan_documents/' . $new_filename,
+                            'uploaded_at' => date('Y-m-d H:i:s')
+                        ];
+                        $this->db->insert(db_prefix() . 'lead_loan_documents', $doc_data);
+                        $extracted_files[] = $file_info['basename'] . ' mapped to ' . $matched_type;
+                    }
+                } else {
+                    $unmapped_files[] = $file_info['basename'];
+                }
+            }
+            $zip->close();
+            @unlink($temp_zip);
+
+            $msg = 'ZIP file processed. ';
+            if (count($extracted_files) > 0) {
+                $msg .= count($extracted_files) . ' files automatically mapped successfully. ';
+            }
+            if (count($unmapped_files) > 0) {
+                $msg .= count($unmapped_files) . ' files could not be mapped (check file names). ';
+            }
+
+            echo json_encode([
+                'success' => true,
+                'message' => $msg,
+                'mapped' => $extracted_files,
+                'unmapped' => $unmapped_files
+            ]);
+        } else {
+            @unlink($temp_zip);
+            echo json_encode(['success' => false, 'message' => 'Failed to open ZIP archive.']);
+        }
+    }
+
     public function delete_loan_document($doc_id)
     {
         if (!is_staff_member()) {
@@ -1540,10 +1689,15 @@ class Leads extends AdminController
         $this->db->where('lead_id', $lead_id);
         $documents = $this->db->get(db_prefix() . 'lead_loan_documents')->result_array();
 
+        $this->db->where('lead_id', $lead_id);
+        $this->db->where('proof_path IS NOT NULL');
+        $proofs = $this->db->get(db_prefix() . 'lead_loan_status_history')->result_array();
+
         $data = [
             'lead' => $lead,
             'details' => $details ?: (object)[],
             'documents' => $documents,
+            'proofs' => $proofs,
             'title' => 'Lead Summary - ' . $lead->name
         ];
 
@@ -1572,6 +1726,93 @@ class Leads extends AdminController
         }
 
         App_table::find('converted_leads')->output();
+    }
+
+    public function update_converted_lead_status()
+    {
+        if (!is_staff_member()) {
+            ajax_access_denied();
+        }
+
+        if ($this->input->post()) {
+            $lead_id = $this->input->post('leadid');
+            $status_id = $this->input->post('status');
+
+            // 1. Get old status name
+            $this->db->select('status');
+            $this->db->where('id', $lead_id);
+            $_old = $this->db->get(db_prefix() . 'leads')->row();
+            $old_status_name = 'N/A';
+            if ($_old) {
+                $old_status_obj = $this->leads_model->get_status($_old->status);
+                if ($old_status_obj) {
+                    $old_status_name = $old_status_obj->name;
+                }
+            }
+
+            // 2. Get new status name
+            $new_status_obj = $this->leads_model->get_status($status_id);
+            $new_status_name = $new_status_obj ? $new_status_obj->name : 'Unknown';
+
+            $proof_path = null;
+
+            // 3. If new status is "Printed" (ID 8), handle proof upload
+            if ($status_id == 8) {
+                if (!empty($_FILES['proof']['name'])) {
+                    $path = FCPATH . 'uploads/lead_loan_documents/';
+                    if (!is_dir($path)) {
+                        mkdir($path, 0777, true);
+                    }
+
+                    $ext = strtolower(pathinfo($_FILES['proof']['name'], PATHINFO_EXTENSION));
+                    $allowed_exts = ['jpg', 'jpeg', 'png', 'pdf'];
+                    if (!in_array($ext, $allowed_exts)) {
+                        echo json_encode(['success' => false, 'message' => 'Proof must be an image or PDF file.']);
+                        return;
+                    }
+
+                    $config['upload_path']   = $path;
+                    $config['allowed_types'] = '*';
+                    $config['max_size']      = 20480;
+                    $config['encrypt_name']  = true;
+
+                    $this->load->library('upload', $config);
+                    if ($this->upload->do_upload('proof')) {
+                        $upload_data = $this->upload->data();
+                        $proof_path = 'uploads/lead_loan_documents/' . $upload_data['file_name'];
+                    } else {
+                        echo json_encode(['success' => false, 'message' => 'Failed to upload proof: ' . $this->upload->display_errors('', '')]);
+                        return;
+                    }
+                } else {
+                    echo json_encode(['success' => false, 'message' => 'Proof file is required when marking as Printed.']);
+                    return;
+                }
+            }
+
+            // 4. Update lead status in leads table
+            $this->db->where('id', $lead_id);
+            $this->db->update(db_prefix() . 'leads', ['status' => $status_id]);
+
+            // 5. Get current logged in staff name
+            $changed_by = get_staff_full_name();
+
+            // 6. Save history record
+            $history_data = [
+                'lead_id' => $lead_id,
+                'old_status' => $old_status_name,
+                'new_status' => $new_status_name,
+                'changed_by' => $changed_by,
+                'proof_path' => $proof_path
+            ];
+            $this->db->insert(db_prefix() . 'lead_loan_status_history', $history_data);
+
+            // Log activity in standard Perfex lead activity log
+            $this->leads_model->log_lead_activity($lead_id, 'Status changed from ' . $old_status_name . ' to ' . $new_status_name . ' by ' . $changed_by);
+
+            echo json_encode(['success' => true, 'message' => 'Status updated successfully.']);
+            return;
+        }
     }
 }
 

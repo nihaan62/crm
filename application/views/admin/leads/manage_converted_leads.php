@@ -42,9 +42,88 @@
 
 <?php include_once APPPATH . 'views/admin/leads/loan_details_modal.php'; ?>
 <?php include_once APPPATH . 'views/admin/leads/status.php'; ?>
+
+<!-- Hidden input for Printed proof upload -->
+<input type="file" id="printed-proof-input" style="display: none;" accept="image/*,application/pdf">
+
 <?php init_tail(); ?>
 
 <script>
+// Custom mark status handler for converted leads workspace
+function custom_lead_mark_as(status_id, lead_id) {
+    if (status_id == 8) { // Printed
+        alert_float('warning', 'Please select an image or PDF proof for the Printed status.');
+        const fileInput = $('#printed-proof-input');
+        
+        fileInput.off('change');
+        fileInput.on('change', function() {
+            const file = this.files[0];
+            if (!file) return;
+            
+            const formData = new FormData();
+            formData.append('leadid', lead_id);
+            formData.append('status', status_id);
+            formData.append('proof', file);
+            if (typeof(csrfData) !== 'undefined') {
+                formData.append(csrfData.token_name, csrfData.hash);
+            }
+            
+            // Post to our custom endpoint
+            $.ajax({
+                url: admin_url + 'leads/update_converted_lead_status',
+                type: 'POST',
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function(response) {
+                    const res = JSON.parse(response);
+                    if (res.success) {
+                        alert_float('success', res.message);
+                        $('.table-converted_leads').DataTable().ajax.reload(null, false);
+                    } else {
+                        alert_float('danger', res.message);
+                    }
+                },
+                error: function() {
+                    alert_float('danger', 'Error updating status.');
+                }
+            });
+            
+            fileInput.val('');
+        });
+        
+        fileInput.click();
+    } else {
+        // Other statuses
+        const formData = new FormData();
+        formData.append('leadid', lead_id);
+        formData.append('status', status_id);
+        if (typeof(csrfData) !== 'undefined') {
+            formData.append(csrfData.token_name, csrfData.hash);
+        }
+        
+        $.ajax({
+            url: admin_url + 'leads/update_converted_lead_status',
+            type: 'POST',
+            data: formData,
+            contentType: false,
+            processData: false,
+            success: function(response) {
+                const res = JSON.parse(response);
+                if (res.success) {
+                    alert_float('success', res.message);
+                    $('.table-converted_leads').DataTable().ajax.reload(null, false);
+                } else {
+                    alert_float('danger', res.message);
+                }
+            },
+            error: function() {
+                alert_float('danger', 'Error updating status.');
+            }
+        });
+    }
+}
+
 $(function() {
     // Initialize Converted Leads DataTable
     initDataTable('.table-converted_leads', admin_url + 'leads/converted_leads_table', undefined, undefined, 'undefined', [1, 'desc']);

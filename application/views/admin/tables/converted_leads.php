@@ -79,7 +79,7 @@ return App_table::find('converted_leads')
             foreach ($statuses as $leadChangeStatus) {
                 if ($aRow['status_id'] != $leadChangeStatus['id']) {
                     $outputStatus .= '<li>
-                        <a href="#" onclick="lead_mark_as(' . $leadChangeStatus['id'] . ',' . $aRow['id'] . '); return false;">
+                        <a href="#" onclick="custom_lead_mark_as(' . $leadChangeStatus['id'] . ',' . $aRow['id'] . '); return false;">
                             ' . e($leadChangeStatus['name']) . '
                         </a>
                     </li>';
