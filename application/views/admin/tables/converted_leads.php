@@ -94,7 +94,7 @@ return App_table::find('converted_leads')
             $row[] = '<a ' . $hrefAttr . ' class="tw-font-medium">' . e($aRow['name']) . '</a>';
 
             // 3. Number
-            $row[] = ($aRow['phonenumber'] != '' ? '<a href="tel:' . e($aRow['phonenumber']) . '">' . e($aRow['phonenumber']) . '</a>' : 'N/A');
+            $row[] = ($aRow['phonenumber'] != '' ? '<a href="#" class="lead-phone-click" data-phone="' . e($aRow['phonenumber']) . '">' . e($aRow['phonenumber']) . '</a>' : 'N/A');
 
             // 4. Load Type
             $row[] = $aRow['loan_type'] ? e($aRow['loan_type']) : 'N/A';
