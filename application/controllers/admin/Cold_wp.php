@@ -27,6 +27,12 @@ class Cold_wp extends AdminController
                 $this->db->where_in('id', $ids);
                 $leads = $this->db->get(db_prefix() . 'leads')->result_array();
             }
+        } else {
+            // Load all active leads (not lost, not junk) by default
+            $this->db->where('lost', 0);
+            $this->db->where('junk', 0);
+            $this->db->order_by('name', 'asc');
+            $leads = $this->db->get(db_prefix() . 'leads')->result_array();
         }
 
         $data = [
@@ -89,22 +95,26 @@ class Cold_wp extends AdminController
 
     public function logs()
     {
-        if (!staff_can('view', 'cold_wp_messages')) {
-            access_denied('Cold WP Messages');
+        try {
+            if (!staff_can('view', 'cold_wp_messages')) {
+                access_denied('Cold WP Messages');
+            }
+
+            $this->db->select(db_prefix() . 'cold_wp_messages.*, ' . db_prefix() . 'leads.name as lead_name');
+            $this->db->from(db_prefix() . 'cold_wp_messages');
+            $this->db->join(db_prefix() . 'leads', db_prefix() . 'leads.id = ' . db_prefix() . 'cold_wp_messages.lead_id', 'left');
+            $this->db->order_by(db_prefix() . 'cold_wp_messages.sent_at', 'desc');
+            $logs = $this->db->get()->result_array();
+
+            $data = [
+                'logs' => $logs,
+                'title' => 'WhatsApp Cold Message Logs'
+            ];
+
+            $this->load->view('admin/cold_wp/logs', $data);
+        } catch (Throwable $e) {
+            show_error('Error: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
         }
-
-        $this->db->select(db_prefix() . 'cold_wp_messages.*, ' . db_prefix() . 'leads.name as lead_name');
-        $this->db->from(db_prefix() . 'cold_wp_messages');
-        $this->db->join(db_prefix() . 'leads', db_prefix() . 'leads.id = ' . db_prefix() . 'cold_wp_messages.lead_id', 'left');
-        $this->db->order_by(db_prefix() . 'cold_wp_messages.sent_at', 'desc');
-        $logs = $this->db->get()->result_array();
-
-        $data = [
-            'logs' => $logs,
-            'title' => 'WhatsApp Cold Message Logs'
-        ];
-
-        $this->load->view('admin/cold_wp/logs', $data);
     }
 
     public function delete_log($id)
