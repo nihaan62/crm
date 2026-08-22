@@ -198,13 +198,15 @@ function app_init_admin_sidebar_menu_items()
             'badge'    => [],
         ]);
 
-        $CI->app_menu->add_sidebar_children_item('leads', [
-            'slug'     => 'leads-converted',
-            'name'     => 'Converted Leads',
-            'href'     => admin_url('leads/converted_leads'),
-            'position' => 10,
-            'badge'    => [],
-        ]);
+        if (staff_can('view', 'converted_leads')) {
+            $CI->app_menu->add_sidebar_children_item('leads', [
+                'slug'     => 'leads-converted',
+                'name'     => 'Converted Leads',
+                'href'     => admin_url('leads/converted_leads'),
+                'position' => 10,
+                'badge'    => [],
+            ]);
+        }
     }
 
     if ((staff_can('view',  'estimate_request') || staff_can('view_own',  'estimate_request'))) {

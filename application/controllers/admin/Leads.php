@@ -1362,7 +1362,7 @@ class Leads extends AdminController
 
     public function get_loan_details($lead_id)
     {
-        if (!is_staff_member() || !$this->leads_model->staff_can_access_lead($lead_id)) {
+        if (!staff_can('view', 'converted_leads') || !$this->leads_model->staff_can_access_lead($lead_id)) {
             ajax_access_denied();
         }
 
@@ -1385,7 +1385,7 @@ class Leads extends AdminController
 
     public function save_loan_details()
     {
-        if (!is_staff_member()) {
+        if (!staff_can('edit', 'converted_leads') && !staff_can('create', 'converted_leads')) {
             ajax_access_denied();
         }
 
@@ -1428,7 +1428,7 @@ class Leads extends AdminController
 
     public function upload_loan_document($lead_id)
     {
-        if (!is_staff_member() || !$this->leads_model->staff_can_access_lead($lead_id)) {
+        if ((!staff_can('edit', 'converted_leads') && !staff_can('create', 'converted_leads')) || !$this->leads_model->staff_can_access_lead($lead_id)) {
             ajax_access_denied();
         }
 
@@ -1497,7 +1497,7 @@ class Leads extends AdminController
 
     public function upload_loan_document_zip($lead_id)
     {
-        if (!is_staff_member() || !$this->leads_model->staff_can_access_lead($lead_id)) {
+        if ((!staff_can('edit', 'converted_leads') && !staff_can('create', 'converted_leads')) || !$this->leads_model->staff_can_access_lead($lead_id)) {
             echo json_encode(['success' => false, 'message' => 'Access denied.']);
             return;
         }
@@ -1644,7 +1644,7 @@ class Leads extends AdminController
 
     public function delete_loan_document($doc_id)
     {
-        if (!is_staff_member()) {
+        if (!staff_can('delete', 'converted_leads')) {
             ajax_access_denied();
         }
 
@@ -1706,7 +1706,7 @@ class Leads extends AdminController
 
     public function converted_leads()
     {
-        if (!is_staff_member()) {
+        if (!staff_can('view', 'converted_leads')) {
             access_denied('Converted Leads');
         }
 
@@ -1721,7 +1721,7 @@ class Leads extends AdminController
 
     public function converted_leads_table()
     {
-        if (!is_staff_member()) {
+        if (!staff_can('view', 'converted_leads')) {
             ajax_access_denied();
         }
 
@@ -1731,7 +1731,7 @@ class Leads extends AdminController
     public function update_converted_lead_status()
     {
         try {
-            if (!is_staff_member()) {
+            if (!staff_can('edit', 'converted_leads') && !staff_can('create', 'converted_leads')) {
                 ajax_access_denied();
             }
 
