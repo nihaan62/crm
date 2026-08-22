@@ -308,6 +308,30 @@
 </script>
 <?php include_once APPPATH . 'views/admin/leads/status.php'; ?>
 <?php include_once APPPATH . 'views/admin/leads/loan_details_modal.php'; ?>
+
+<!-- Call Options Modal -->
+<div class="modal fade" id="lead_call_options_modal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-sm" role="document" style="margin-top: 15%;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title text-center bold"><i class="fa fa-phone"></i> Call Options</h4>
+            </div>
+            <div class="modal-body text-center" style="padding: 20px;">
+                <p style="font-size: 15px; margin-bottom: 20px;">Select how you want to contact <br><strong id="call_opt_phone" class="text-primary"></strong></p>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <a href="#" id="normal_call_link" class="btn btn-primary btn-block btn-lg" style="font-weight: bold; margin-bottom: 5px;">
+                        <i class="fa fa-phone-square"></i> Normal Call
+                    </a>
+                    <a href="#" id="whatsapp_call_link" target="_blank" class="btn btn-success btn-block btn-lg" style="font-weight: bold; background-color: #25d366; border-color: #25d366; color: #fff;">
+                        <i class="fa fa-whatsapp"></i> WhatsApp Call
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <?php init_tail(); ?>
 <script>
     var openLeadID = '<?= e($leadid); ?>';
@@ -324,6 +348,20 @@
             } else {
                 $('#leads_bulk_mark_lost').prop('disabled', false);
             }
+        });
+
+        // Handle phone link clicks
+        $(document).on('click', '.lead-phone-click', function(e) {
+            e.preventDefault();
+            const phone = $(this).data('phone');
+            
+            let cleanPhone = phone.toString().replace(/[^0-9+]/g, '');
+            
+            $('#call_opt_phone').text(phone);
+            $('#normal_call_link').attr('href', 'tel:' + cleanPhone);
+            $('#whatsapp_call_link').attr('href', 'https://api.whatsapp.com/send?phone=' + cleanPhone);
+            
+            $('#lead_call_options_modal').modal('show');
         });
     });
 </script>

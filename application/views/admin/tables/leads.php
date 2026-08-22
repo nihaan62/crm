@@ -196,7 +196,7 @@ return App_table::find('leads')
 
             $row[] = ($aRow['email'] != '' ? '<a href="mailto:' . e($aRow['email']) . '">' . e($aRow['email']) . '</a>' : '');
 
-            $row[] = ($aRow['phonenumber'] != '' ? '<a href="tel:' . e($aRow['phonenumber']) . '">' . e($aRow['phonenumber']) . '</a>' : '');
+            $row[] = ($aRow['phonenumber'] != '' ? '<a href="#" class="lead-phone-click" data-phone="' . e($aRow['phonenumber']) . '">' . e($aRow['phonenumber']) . '</a>' : '');
 
             $base_currency = get_base_currency();
             $row[]         = '<span class="tw-font-medium">' . e(($aRow['lead_value'] != 0 ? app_format_money($aRow['lead_value'], $base_currency->id) : '')) . '</span>';
