@@ -8,6 +8,25 @@ class Cold_wp extends AdminController
     {
         parent::__construct();
         $this->load->model('leads_model');
+
+        // Automatic DB Migration checks
+        $db_prefix = db_prefix();
+        if (!$this->db->table_exists($db_prefix . 'cold_wp_messages')) {
+            $this->db->query("CREATE TABLE IF NOT EXISTS `{$db_prefix}cold_wp_messages` (
+                `id` INT AUTO_INCREMENT PRIMARY KEY,
+                `lead_id` INT NOT NULL,
+                `phone_number` VARCHAR(30) NOT NULL,
+                `message_text` TEXT NOT NULL,
+                `image_path` VARCHAR(255) DEFAULT NULL,
+                `sent_by` VARCHAR(100) NOT NULL,
+                `sent_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                `status` VARCHAR(20) DEFAULT 'Sent'
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8;");
+        }
+
+        if (!$this->db->field_exists('batch_name', $db_prefix . 'leads')) {
+            $this->db->query("ALTER TABLE `{$db_prefix}leads` ADD COLUMN `batch_name` VARCHAR(191) DEFAULT NULL");
+        }
     }
 
     public function index()

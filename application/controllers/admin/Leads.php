@@ -15,6 +15,12 @@ class Leads extends AdminController
     {
         parent::__construct();
         $this->load->model('leads_model');
+
+        // Auto-check/create batch_name column in tblleads
+        $db_prefix = db_prefix();
+        if (!$this->db->field_exists('batch_name', $db_prefix . 'leads')) {
+            $this->db->query("ALTER TABLE `{$db_prefix}leads` ADD COLUMN `batch_name` VARCHAR(191) DEFAULT NULL");
+        }
     }
 
     /* List all leads */
