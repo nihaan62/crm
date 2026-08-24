@@ -905,19 +905,26 @@ function csrf_jquery_token()
 <script>
     if (typeof(jQuery) === 'undefined' && !window.deferAfterjQueryLoaded) {
         window.deferAfterjQueryLoaded = [];
-        Object.defineProperty(window, "$", {
-            set: function(value) {
-                window.setTimeout(function() {
-                    $.each(window.deferAfterjQueryLoaded, function(index, fn) {
-                        fn();
-                    });
-                }, 0);
-                Object.defineProperty(window, "$", {
-                    value: value
-                });
-            },
-            configurable: true
-        });
+        (function() {
+            var dollarValue;
+            Object.defineProperty(window, "$", {
+                get: function() {
+                    return dollarValue;
+                },
+                set: function(value) {
+                    dollarValue = value;
+                    if (value && typeof value.each === 'function') {
+                        window.setTimeout(function() {
+                            value.each(window.deferAfterjQueryLoaded, function(index, fn) {
+                                fn();
+                            });
+                        }, 0);
+                    }
+                },
+                configurable: true,
+                enumerable: true
+            });
+        })();
     }
 
     var csrfData = <?= json_encode(get_csrf_for_ajax()); ?> ;
@@ -933,7 +940,11 @@ function csrf_jquery_token()
         csrf_jquery_ajax_setup();
     }
 
+    var csrf_ajax_setup_done = false;
     function csrf_jquery_ajax_setup() {
+        if (csrf_ajax_setup_done) return;
+        if (typeof(jQuery) === 'undefined' || !window.$) return;
+        csrf_ajax_setup_done = true;
         $.ajaxSetup({
             data: csrfData.formatted
         });
