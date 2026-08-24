@@ -32,7 +32,7 @@
                                 <div class="col-md-4">
                                     <?= form_open_multipart($this->uri->uri_string(), ['id' => 'import_form']); ?>
                                     <?= form_hidden('leads_import', 'true'); ?>
-                                    <?= render_input('file_csv', 'choose_csv_file', '', 'file'); ?>
+                                    <?= render_input('file_csv', 'Choose CSV / XLSX File', '', 'file'); ?>
                                     <?= render_input('batch_name', 'Section Name / Batch Name (e.g. Today Leads, Yesterday Leads)', $this->input->post('batch_name')); ?>
                                     <?= render_leads_status_select($statuses, ($this->input->post('status') ? $this->input->post('status') : get_option('leads_default_status')), _l('lead_import_status') . ' (fallback)', 'status', [], true);
 echo render_leads_source_select($sources, ($this->input->post('source') ? $this->input->post('source') : get_option('leads_default_source')), _l('lead_import_source') . ' (fallback)');
@@ -63,7 +63,7 @@ echo render_leads_source_select($sources, ($this->input->post('source') ? $this-
         appValidateForm($('#import_form'), {
             file_csv: {
                 required: true,
-                extension: "csv"
+                extension: "csv|xlsx"
             },
             source: 'required',
             status: 'required'

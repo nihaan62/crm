@@ -7,6 +7,8 @@ class Import_leads extends App_import
 {
     private $uniqueValidationFields = [];
 
+    private $customFieldsValues = [];
+
     protected $notImportableFields = [];
 
     protected $requiredFields = ['name'];
@@ -53,24 +55,79 @@ class Import_leads extends App_import
         $this->initialize();
 
         $databaseFields      = $this->getImportableDatabaseFields();
+        $customFields        = $this->getCustomFields();
         $totalDatabaseFields = count($databaseFields);
+
+        $colMapping = [];
+        $headers = $this->getHeaders();
+        if (!empty($headers)) {
+            foreach ($headers as $index => $header) {
+                $header = trim(strtolower($header));
+                if (empty($header)) continue;
+
+                $matched = false;
+                foreach ($databaseFields as $dbField) {
+                    $fieldLabel = trim(strtolower($this->formatFieldNameForHeading($dbField)));
+                    if ($header === trim(strtolower($dbField)) || $header === $fieldLabel) {
+                        $colMapping[$index] = ['type' => 'db', 'field' => $dbField];
+                        $matched = true;
+                        break;
+                    }
+                }
+
+                if (!$matched) {
+                    foreach ($customFields as $cf) {
+                        if ($header === trim(strtolower($cf['name']))) {
+                            $colMapping[$index] = ['type' => 'custom', 'field' => $cf];
+                            $matched = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (empty($colMapping)) {
+            // Fallback to index-based mapping
+            foreach ($databaseFields as $i => $dbField) {
+                $colMapping[$i] = ['type' => 'db', 'field' => $dbField];
+            }
+            foreach ($customFields as $i => $cf) {
+                $colMapping[$totalDatabaseFields + $i] = ['type' => 'custom', 'field' => $cf];
+            }
+        }
 
         foreach ($this->getRows() as $rowNumber => $row) {
             $insert = [];
-            for ($i = 0; $i < $totalDatabaseFields; $i++) {
-                $row[$i] = $this->checkNullValueAddedByUser($row[$i]);
+            $rowCustomFields = [];
 
-                if ($databaseFields[$i] == 'name' && empty($row[$i])) {
-                    $row[$i] = '/';
-                } elseif ($databaseFields[$i] == 'country') {
-                    $row[$i] = $this->countryValue($row[$i]);
-                } elseif ($databaseFields[$i] == 'source') {
-                    $row[$i] = $this->sourceValue($row[$i]);
-                } elseif ($databaseFields[$i] == 'status') {
-                    $row[$i] = $this->statusValue($row[$i]);
+            foreach ($colMapping as $index => $mapInfo) {
+                if (!isset($row[$index])) continue;
+
+                $val = $this->checkNullValueAddedByUser($row[$index]);
+
+                if ($mapInfo['type'] === 'db') {
+                    $dbField = $mapInfo['field'];
+                    if ($dbField == 'name' && empty($val)) {
+                        $val = '/';
+                    } elseif ($dbField == 'country') {
+                        $val = $this->countryValue($val);
+                    } elseif ($dbField == 'source') {
+                        $val = $this->sourceValue($val);
+                    } elseif ($dbField == 'status') {
+                        $val = $this->statusValue($val);
+                    }
+                    $insert[$dbField] = $val;
+                } elseif ($mapInfo['type'] === 'custom') {
+                    $cf = $mapInfo['field'];
+                    $rowCustomFields[$cf['id']] = [
+                        'value' => $val,
+                    ];
                 }
+            }
 
-                $insert[$databaseFields[$i]] = $row[$i];
+            if (!isset($insert['name']) || empty($insert['name'])) {
+                $insert['name'] = '/';
             }
 
             $insert = $this->trimInsertValues($insert);
@@ -83,6 +140,7 @@ class Import_leads extends App_import
                 $this->incrementImported();
 
                 $id = null;
+                $this->customFieldsValues[$rowNumber] = $rowCustomFields;
 
                 if (!$this->isSimulation()) {
                     if (!isset($insert['dateadded'])) {
@@ -121,7 +179,8 @@ class Import_leads extends App_import
                     $this->simulationData[$rowNumber] = $this->formatValuesForSimulation($insert);
                 }
 
-                $this->handleCustomFieldsInsert($id, $row, $i, $rowNumber, 'leads');
+                $dummy = 0;
+                $this->handleCustomFieldsInsert($id, $row, $dummy, $rowNumber, 'leads');
             }
 
             if ($this->isSimulation() && $rowNumber >= $this->maxSimulationRows) {
@@ -236,5 +295,34 @@ class Import_leads extends App_import
         }
 
         return $value;
+    }
+
+    protected function handleCustomFieldsInsert($rel_id, $row, &$fieldNumber, $rowNumber, $customFieldTo)
+    {
+        $rowCustomFields = $this->customFieldsValues[$rowNumber] ?? [];
+        foreach ($this->getCustomFields() as $field) {
+            $value = '';
+            if (isset($rowCustomFields[$field['id']])) {
+                $value = $rowCustomFields[$field['id']]['value'];
+            }
+
+            if ($this->isSimulation()) {
+                $this->simulationData[$rowNumber][$field['name']] = $value;
+                continue;
+            }
+
+            if ($value != '' && $value !== 'NULL' && $value !== 'null') {
+                if ($field['type'] === 'link' && !\app\services\utilities\Str::isHtml($value)) {
+                    $value = sprintf('<a href="%s" target="_blank">%s</a>', $value, $value);
+                }
+                $customFieldData = [
+                    'relid'   => $rel_id,
+                    'fieldid' => $field['id'],
+                    'value'   => trim($value),
+                    'fieldto' => $customFieldTo,
+                ];
+                $this->ci->db->insert(db_prefix() . 'customfieldsvalues', $customFieldData);
+            }
+        }
     }
 }

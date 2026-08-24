@@ -110,6 +110,13 @@ abstract class App_import
      */
     protected $customFields = [];
 
+    protected $headers = [];
+
+    public function getHeaders()
+    {
+        return $this->headers;
+    }
+
     public function __construct()
     {
         $this->ci = &get_instance();
@@ -616,13 +623,21 @@ abstract class App_import
      */
     protected function readFileRows()
     {
-        $fd   = fopen($this->tmpFileStoragePath, 'r');
         $rows = [];
-        while ($row = fgetcsv($fd)) {
-            $rows[] = $row;
+        $ext = pathinfo($this->filename, PATHINFO_EXTENSION);
+        if (strtolower($ext) === 'xlsx') {
+            $rows = $this->parseXlsx($this->tmpFileStoragePath);
+            if ($rows === false) {
+                set_alert('warning', 'Failed to parse Excel file');
+                redirect($this->failureRedirectURL());
+            }
+        } else {
+            $fd = fopen($this->tmpFileStoragePath, 'r');
+            while ($row = fgetcsv($fd)) {
+                $rows[] = $row;
+            }
+            fclose($fd);
         }
-
-        fclose($fd);
 
         $this->totalRows = count($rows);
 
@@ -631,6 +646,7 @@ abstract class App_import
             redirect($this->failureRedirectURL());
         }
 
+        $this->headers = $rows[0];
         unset($rows[0]);
 
         $this->setRows($rows);
@@ -724,5 +740,117 @@ abstract class App_import
         if (!is_null($this->tmpDir) && is_dir($this->tmpDir)) {
             @delete_dir($this->tmpDir);
         }
+    }
+
+    protected function parseXlsx($filePath)
+    {
+        if (!class_exists('ZipArchive')) {
+            return false;
+        }
+
+        $zip = new ZipArchive();
+        if ($zip->open($filePath) !== true) {
+            return false;
+        }
+
+        // 1. Read shared strings
+        $sharedStrings = [];
+        $stringsXml = $zip->getFromName('xl/sharedStrings.xml');
+        if ($stringsXml !== false) {
+            // Strip namespaces to be 100% namespace-agnostic and robust
+            $stringsXml = preg_replace('/<(\/?)\w+:([^>]*?)>/', '<$1$2>', $stringsXml);
+            $stringsXml = preg_replace('/xmlns[^=]*="[^"]*"/i', '', $stringsXml);
+            $xml = simplexml_load_string($stringsXml);
+            if ($xml) {
+                foreach ($xml->si as $si) {
+                    if (isset($si->t)) {
+                        $sharedStrings[] = (string)$si->t;
+                    } elseif (isset($si->r)) { // rich text
+                        $text = '';
+                        foreach ($si->r as $r) {
+                            if (isset($r->t)) {
+                                $text .= (string)$r->t;
+                            }
+                        }
+                        $sharedStrings[] = $text;
+                    } else {
+                        $sharedStrings[] = '';
+                    }
+                }
+            }
+        }
+
+        // 2. Read sheet1
+        $sheetXml = $zip->getFromName('xl/worksheets/sheet1.xml');
+        if ($sheetXml === false) {
+            $zip->close();
+            return false;
+        }
+
+        // Strip namespaces to be 100% namespace-agnostic and robust
+        $sheetXml = preg_replace('/<(\/?)\w+:([^>]*?)>/', '<$1$2>', $sheetXml);
+        $sheetXml = preg_replace('/xmlns[^=]*="[^"]*"/i', '', $sheetXml);
+        $xml = simplexml_load_string($sheetXml);
+        $zip->close();
+        if (!$xml) {
+            return false;
+        }
+
+        $rows = [];
+        if (isset($xml->sheetData->row)) {
+            foreach ($xml->sheetData->row as $row) {
+                $rowIndex = (int)$row['r'] - 1;
+                $rowData = [];
+
+                if (isset($row->c)) {
+                    foreach ($row->c as $c) {
+                        $ref = (string)$c['r']; // e.g. "A1", "B1"
+                        preg_match('/^[A-Z]+/', $ref, $matches);
+                        if (!empty($matches)) {
+                            $colLetter = $matches[0];
+                            $colIndex = $this->columnLetterToIndex($colLetter);
+
+                            $val = '';
+                            if (isset($c->v)) {
+                                $val = (string)$c->v;
+                                if (isset($c['t']) && (string)$c['t'] === 's') {
+                                    $val = $sharedStrings[(int)$val] ?? '';
+                                }
+                            }
+                            $rowData[$colIndex] = $val;
+                        }
+                    }
+                }
+
+                $maxIndex = empty($rowData) ? -1 : max(array_keys($rowData));
+                for ($i = 0; $i <= $maxIndex; $i++) {
+                    if (!isset($rowData[$i])) {
+                        $rowData[$i] = '';
+                    }
+                }
+                ksort($rowData);
+                $rows[$rowIndex] = $rowData;
+            }
+        }
+
+        $maxRowIndex = empty($rows) ? -1 : max(array_keys($rows));
+        for ($i = 0; $i <= $maxRowIndex; $i++) {
+            if (!isset($rows[$i])) {
+                $rows[$i] = [];
+            }
+        }
+        ksort($rows);
+
+        return $rows;
+    }
+
+    private function columnLetterToIndex($letter)
+    {
+        $index = 0;
+        $len = strlen($letter);
+        for ($i = 0; $i < $len; $i++) {
+            $index = $index * 26 + (ord($letter[$i]) - 64);
+        }
+        return $index - 1;
     }
 }
