@@ -19,26 +19,10 @@
 
                         <!-- Form for template and image -->
                         <form id="campaign_form" enctype="multipart/form-data">
+                            <input type="hidden" id="template_id" name="template_id" value="">
                             <div class="form-group">
-                                <label for="template_select" class="control-label">Load Saved Template</label>
-                                <div class="input-group">
-                                    <select id="template_select" class="selectpicker" data-width="100%" data-none-selected-text="Select a saved template..." data-live-search="true">
-                                        <option value="">-- Select Template --</option>
-                                        <?php foreach ($templates as $tmpl) { ?>
-                                            <option value="<?= $tmpl['id']; ?>" 
-                                                    data-message="<?= e($tmpl['message_text']); ?>" 
-                                                    data-image="<?= $tmpl['image_path'] ? base_url($tmpl['image_path']) : ''; ?>"
-                                                    data-raw-image="<?= $tmpl['image_path']; ?>">
-                                                <?= e($tmpl['title']); ?>
-                                            </option>
-                                        <?php } ?>
-                                    </select>
-                                    <span class="input-group-btn">
-                                        <button type="button" class="btn btn-danger" id="delete_template_btn" title="Delete selected template" style="display: none;">
-                                            <i class="fa fa-trash"></i>
-                                        </button>
-                                    </span>
-                                </div>
+                                <label for="template_title" class="control-label">Template Title</label>
+                                <input type="text" id="template_title" name="title" class="form-control" placeholder="e.g. Loan Script 1">
                             </div>
 
                             <div class="form-group">
@@ -53,10 +37,13 @@
                                 <span class="text-muted"><i class="fa fa-info-circle"></i> Since WhatsApp API does not support direct image pre-attachment via links, uploaded images will be shown below for easy copy-pasting (Ctrl+V) into WhatsApp.</span>
                             </div>
 
-                            <!-- Save Template Button -->
-                            <div class="form-group tw-mt-4">
-                                <button type="button" class="btn btn-info btn-block" id="save_template_btn">
-                                    <i class="fa fa-save"></i> Save Current Message as Template
+                            <!-- Save / Reset Buttons -->
+                            <div class="form-group tw-mt-4 tw-flex tw-space-x-2">
+                                <button type="button" class="btn btn-info tw-flex-1" id="save_template_btn">
+                                    <i class="fa fa-save"></i> Save Template
+                                </button>
+                                <button type="button" class="btn btn-default" id="reset_template_btn" style="display: none;">
+                                    <i class="fa fa-refresh"></i> Reset
                                 </button>
                             </div>
 
@@ -66,6 +53,55 @@
                                 <img id="image_preview" src="#" style="max-height: 200px; max-width: 100%; object-fit: contain; border-radius: 4px;" />
                             </div>
                         </form>
+
+                        <!-- Saved Templates Table -->
+                        <div class="tw-mt-8">
+                            <h4 class="tw-my-0 tw-font-bold tw-text-base tw-text-neutral-700 tw-mb-4">
+                                <i class="fa fa-list"></i> Saved Templates
+                            </h4>
+                            <div class="table-responsive" style="max-height: 300px; overflow-y: auto; border: 1px solid #eee; border-radius: 4px;">
+                                <table class="table table-hover table-bordered" id="templates_table" style="margin-bottom: 0;">
+                                    <thead>
+                                        <tr>
+                                            <th>Title</th>
+                                            <th>Message</th>
+                                            <th>Media</th>
+                                            <th class="text-center">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($templates as $tmpl) { ?>
+                                            <tr id="tmpl_row_<?= $tmpl['id']; ?>" 
+                                                data-id="<?= $tmpl['id']; ?>" 
+                                                data-title="<?= e($tmpl['title']); ?>" 
+                                                data-message="<?= e($tmpl['message_text']); ?>" 
+                                                data-image="<?= $tmpl['image_path'] ? base_url($tmpl['image_path']) : ''; ?>"
+                                                data-raw-image="<?= $tmpl['image_path']; ?>">
+                                                <td class="bold tmpl-title"><?= e($tmpl['title']); ?></td>
+                                                <td class="tmpl-message" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                                    <?= e($tmpl['message_text']); ?>
+                                                </td>
+                                                <td class="tmpl-image text-center">
+                                                    <?php if ($tmpl['image_path']) { ?>
+                                                        <img src="<?= base_url($tmpl['image_path']); ?>" style="max-height: 30px; max-width: 50px; object-fit: contain; border-radius: 2px;">
+                                                    <?php } else { ?>
+                                                        <span class="text-muted">No Media</span>
+                                                    <?php } ?>
+                                                </td>
+                                                <td class="text-center" style="white-space: nowrap;">
+                                                    <button type="button" class="btn btn-info btn-xs edit-template-btn" title="Load / Edit">
+                                                        <i class="fa fa-edit"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-danger btn-xs delete-template-btn" title="Delete">
+                                                        <i class="fa fa-trash"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        <?php } ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -131,49 +167,66 @@
 $(function() {
     let uploadedImagePath = null;
 
-    // Template selection change handler
-    $('#template_select').on('change', function() {
-        const selectedOpt = $(this).find('option:selected');
-        const val = $(this).val();
+    // Load / Edit template click handler
+    $(document).on('click', '.edit-template-btn', function() {
+        const row = $(this).closest('tr');
+        const id = row.data('id');
+        const title = row.data('title');
+        const message = row.data('message');
+        const image = row.data('image');
+        const rawImage = row.data('raw-image');
 
-        if (val) {
-            const message = selectedOpt.data('message');
-            const imageUrl = selectedOpt.data('image');
-            const rawImage = selectedOpt.data('raw-image');
+        $('#template_id').val(id);
+        $('#template_title').val(title);
+        $('#message_template').val(message);
 
-            $('#message_template').val(message);
-
-            if (imageUrl) {
-                $('#image_preview').attr('src', imageUrl);
-                $('#image_preview_container').show();
-                uploadedImagePath = rawImage; // Set for campaign send logging
-            } else {
-                $('#image_preview_container').hide();
-                uploadedImagePath = null;
-            }
-            $('#delete_template_btn').show();
+        if (image) {
+            $('#image_preview').attr('src', image);
+            $('#image_preview_container').show();
+            uploadedImagePath = rawImage;
         } else {
-            $('#message_template').val('');
             $('#image_preview_container').hide();
             uploadedImagePath = null;
-            $('#delete_template_btn').hide();
         }
+
+        $('#save_template_btn').html('<i class="fa fa-save"></i> Update Template');
+        $('#reset_template_btn').show();
     });
 
-    // Save template click handler
+    // Reset template form handler
+    function resetTemplateForm() {
+        $('#template_id').val('');
+        $('#template_title').val('');
+        $('#message_template').val('');
+        $('#media_image').val('');
+        $('#image_preview_container').hide();
+        $('#image_preview').attr('src', '#');
+        uploadedImagePath = null;
+
+        $('#save_template_btn').html('<i class="fa fa-save"></i> Save Template');
+        $('#reset_template_btn').hide();
+    }
+
+    $('#reset_template_btn').on('click', function() {
+        resetTemplateForm();
+    });
+
+    // Save/Update template click handler
     $('#save_template_btn').on('click', function() {
+        const title = $('#template_title').val().trim();
         const messageText = $('#message_template').val().trim();
+        
+        if (title === '') {
+            alert_float('warning', 'Please enter a template title.');
+            return;
+        }
         if (messageText === '') {
-            alert_float('warning', 'Please enter a message template text first.');
+            alert_float('warning', 'Please enter message template text.');
             return;
         }
 
-        const title = prompt("Enter template title/name:");
-        if (!title) return; // Cancelled
-
         const form = $('#campaign_form')[0];
         const formData = new FormData(form);
-        formData.append('title', title);
 
         if (typeof(csrfData) !== 'undefined') {
             formData.append(csrfData.token_name, csrfData.hash);
@@ -190,17 +243,43 @@ $(function() {
                 if (res.success) {
                     alert_float('success', res.message);
                     
-                    // Add new option to dropdown
-                    const option = $('<option></option>')
-                        .val(res.template.id)
-                        .text(res.template.title)
-                        .attr('data-message', res.template.message_text)
-                        .attr('data-image', res.template.image_path || '')
-                        .attr('data-raw-image', res.template.raw_image_path || '');
+                    const t = res.template;
+                    const mediaHtml = t.image_path ? 
+                        '<img src="' + t.image_path + '" style="max-height:30px; max-width:50px; object-fit:contain; border-radius:2px;">' : 
+                        '<span class="text-muted">No Media</span>';
                     
-                    $('#template_select').append(option);
-                    $('#template_select').val(res.template.id).trigger('change');
-                    $('#template_select').selectpicker('refresh');
+                    const existingRow = $('#tmpl_row_' + t.id);
+                    if (existingRow.length > 0) {
+                        // Update existing row
+                        existingRow.attr('data-title', t.title);
+                        existingRow.attr('data-message', t.message_text);
+                        existingRow.attr('data-image', t.image_path || '');
+                        existingRow.attr('data-raw-image', t.raw_image_path || '');
+                        
+                        existingRow.find('.tmpl-title').text(t.title);
+                        existingRow.find('.tmpl-message').text(t.message_text);
+                        existingRow.find('.tmpl-image').html(mediaHtml);
+                    } else {
+                        // Append new row
+                        const newRow = $('<tr id="tmpl_row_' + t.id + '"></tr>')
+                            .attr('data-id', t.id)
+                            .attr('data-title', t.title)
+                            .attr('data-message', t.message_text)
+                            .attr('data-image', t.image_path || '')
+                            .attr('data-raw-image', t.raw_image_path || '');
+                        
+                        newRow.append('<td class="bold tmpl-title">' + $('<div>').text(t.title).html() + '</td>');
+                        newRow.append('<td class="tmpl-message" style="max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + $('<div>').text(t.message_text).html() + '</td>');
+                        newRow.append('<td class="tmpl-image text-center">' + mediaHtml + '</td>');
+                        newRow.append('<td class="text-center" style="white-space:nowrap;">' +
+                            '<button type="button" class="btn btn-info btn-xs edit-template-btn" title="Load / Edit" style="margin-right:2px;"><i class="fa fa-edit"></i></button>' +
+                            '<button type="button" class="btn btn-danger btn-xs delete-template-btn" title="Delete"><i class="fa fa-trash"></i></button>' +
+                            '</td>');
+                        
+                        $('#templates_table tbody').append(newRow);
+                    }
+                    
+                    resetTemplateForm();
                 } else {
                     alert_float('danger', res.message);
                 }
@@ -212,22 +291,23 @@ $(function() {
     });
 
     // Delete template click handler
-    $('#delete_template_btn').on('click', function() {
-        const val = $('#template_select').val();
-        if (!val) return;
+    $(document).on('click', '.delete-template-btn', function() {
+        const row = $(this).closest('tr');
+        const id = row.data('id');
 
         if (confirm("Are you sure you want to delete this template?")) {
             $.ajax({
-                url: admin_url + 'cold_wp/delete_template/' + val,
+                url: admin_url + 'cold_wp/delete_template/' + id,
                 type: 'POST',
                 data: (typeof(csrfData) !== 'undefined' ? { [csrfData.token_name]: csrfData.hash } : {}),
                 success: function(response) {
                     const res = JSON.parse(response);
                     if (res.success) {
                         alert_float('success', res.message);
-                        $('#template_select').find('option[value="' + val + '"]').remove();
-                        $('#template_select').val('').trigger('change');
-                        $('#template_select').selectpicker('refresh');
+                        row.remove();
+                        if ($('#template_id').val() == id) {
+                            resetTemplateForm();
+                        }
                     } else {
                         alert_float('danger', res.message);
                     }

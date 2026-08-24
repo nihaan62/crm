@@ -169,15 +169,26 @@ class Cold_wp extends AdminController
             return;
         }
 
+        $template_id = $this->input->post('template_id');
         $title = $this->input->post('title');
         $message_text = $this->input->post('message_text');
-        $image_path = null;
-
+        
         if (empty($title)) {
             echo json_encode(['success' => false, 'message' => 'Template Title is required.']);
             return;
         }
 
+        $image_path = null;
+        $existing_template = null;
+
+        if (!empty($template_id)) {
+            $existing_template = $this->db->where('id', (int)$template_id)->get(db_prefix() . 'cold_wp_templates')->row_array();
+            if ($existing_template) {
+                $image_path = $existing_template['image_path'];
+            }
+        }
+
+        // Handle file upload if any new file is selected
         if (isset($_FILES['image']) && !empty($_FILES['image']['name'])) {
             $path = FCPATH . 'uploads/cold_wp_images/';
             if (!is_dir($path)) {
@@ -193,20 +204,28 @@ class Cold_wp extends AdminController
             }
         }
 
-        $insert_data = [
+        $save_data = [
             'title' => $title,
             'message_text' => $message_text,
             'image_path' => $image_path
         ];
 
-        $this->db->insert(db_prefix() . 'cold_wp_templates', $insert_data);
-        $insert_id = $this->db->insert_id();
+        if ($existing_template) {
+            $this->db->where('id', $existing_template['id']);
+            $this->db->update(db_prefix() . 'cold_wp_templates', $save_data);
+            $saved_id = $existing_template['id'];
+            $msg = 'Template updated successfully.';
+        } else {
+            $this->db->insert(db_prefix() . 'cold_wp_templates', $save_data);
+            $saved_id = $this->db->insert_id();
+            $msg = 'Template saved successfully.';
+        }
 
         echo json_encode([
             'success' => true,
-            'message' => 'Template saved successfully.',
+            'message' => $msg,
             'template' => [
-                'id' => $insert_id,
+                'id' => $saved_id,
                 'title' => $title,
                 'message_text' => $message_text,
                 'image_path' => $image_path ? base_url($image_path) : null,
