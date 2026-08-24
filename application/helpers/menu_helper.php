@@ -218,6 +218,13 @@ function app_init_admin_sidebar_menu_items()
         ]);
     }
 
+    $CI->app_menu->add_sidebar_menu_item('leaves', [
+        'name'     => 'Leaves & Salary',
+        'href'     => admin_url('leaves'),
+        'position' => 48,
+        'icon'     => 'fa-regular fa-calendar-times',
+    ]);
+
     if ((staff_can('view',  'estimate_request') || staff_can('view_own',  'estimate_request'))) {
         $CI->app_menu->add_sidebar_menu_item('estimate_request', [
             'name'     => _l('estimate_request'),

@@ -125,23 +125,45 @@
                                 <a href="<?= admin_url('leads'); ?>" class="btn btn-primary" style="margin-top: 10px;">Go to Leads Page</a>
                             </div>
                         <?php } else { ?>
+                            <!-- Filter by Lead Status -->
+                            <div class="form-group tw-mb-4" style="max-width: 300px;">
+                                <label for="lead_status_filter" class="control-label">Filter by Lead Status</label>
+                                <select id="lead_status_filter" class="form-control selectpicker" data-width="100%" data-none-selected-text="All Statuses">
+                                    <option value="">All Statuses</option>
+                                    <?php 
+                                    $statuses = [];
+                                    foreach ($leads as $lead) {
+                                        if (!empty($lead['status_name']) && !in_array($lead['status_name'], $statuses)) {
+                                            $statuses[] = $lead['status_name'];
+                                        }
+                                    }
+                                    sort($statuses);
+                                    foreach ($statuses as $status) {
+                                        echo '<option value="' . e($status) . '">' . e($status) . '</option>';
+                                    }
+                                    ?>
+                                </select>
+                            </div>
+
                             <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
                                 <table class="table table-hover table-bordered">
                                     <thead>
                                         <tr>
                                             <th>Recipient</th>
                                             <th>Phone Number</th>
-                                            <th class="text-center">Status</th>
+                                            <th>Lead Status</th>
+                                            <th class="text-center">Send Status</th>
                                             <th class="text-center">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <?php foreach ($leads as $lead) { ?>
-                                            <tr id="lead_row_<?= $lead['id']; ?>" data-id="<?= $lead['id']; ?>" data-name="<?= e($lead['name']); ?>" data-company="<?= e($lead['company']); ?>" data-phone="<?= e($lead['phonenumber']); ?>">
+                                            <tr id="lead_row_<?= $lead['id']; ?>" data-id="<?= $lead['id']; ?>" data-name="<?= e($lead['name']); ?>" data-company="<?= e($lead['company']); ?>" data-lead-status="<?= e($lead['status_name']); ?>" data-phone="<?= e($lead['phonenumber']); ?>">
                                                 <td class="bold"><?= e($lead['name'] == '/' || empty($lead['name']) ? ($lead['company'] ? $lead['company'] : '/') : $lead['name']); ?></td>
                                                 <td><?= e($lead['phonenumber']); ?></td>
+                                                <td class="lead-status-td"><span class="label label-info"><?= e($lead['status_name']); ?></span></td>
                                                 <td class="text-center status-td">
-                                                    <span class="label label-default">Pending</span>
+                                                     <span class="label label-default">Pending</span>
                                                 </td>
                                                 <td class="text-center">
                                                     <button type="button" class="btn btn-success btn-xs send-wp-btn" onclick="sendWhatsApp(<?= $lead['id']; ?>);">
@@ -163,35 +185,55 @@
 
 <!-- WhatsApp Script Selection Modal for Campaign Page -->
 <div class="modal fade" id="campaign_script_select_modal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-sm" role="document" style="margin-top: 15%;">
+    <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                <h4 class="modal-title text-center bold"><i class="fa fa-whatsapp text-success"></i> Choose Message Script</h4>
+                <h4 class="modal-title bold"><i class="fa fa-whatsapp text-success"></i> Send WhatsApp Message</h4>
             </div>
-            <div class="modal-body text-center" style="padding: 20px;">
-                <p style="font-size: 14px; margin-bottom: 20px;">Select the template you want to send to <br><strong id="campaign_wp_script_lead_name" class="text-primary"></strong></p>
-                <div style="display: flex; flex-direction: column; gap: 10px;">
-                    <!-- Current Form Content Option -->
-                    <button type="button" class="btn btn-success btn-block campaign-script-select-btn" data-use-form="true" style="font-weight: bold; margin-bottom: 10px;">
-                        <i class="fa fa-pencil"></i> Use Current Form Message
-                    </button>
-                    <hr style="margin: 10px 0;" />
-                    <!-- Saved Templates Options -->
-                    <?php if (count($templates) > 0) { ?>
-                        <?php foreach ($templates as $tmpl) { ?>
-                            <button type="button" class="btn btn-primary btn-block campaign-script-select-btn" 
-                                    data-message-template="<?= e($tmpl['message_text']); ?>" 
-                                    data-image-path="<?= $tmpl['image_path']; ?>"
-                                    style="font-weight: bold; margin-bottom: 5px;">
-                                <?= e($tmpl['title']); ?>
-                            </button>
-                        <?php } ?>
-                    <?php } else { ?>
-                        <p class="text-muted text-center">No saved templates found.</p>
-                    <?php } ?>
+            <form id="campaign_whatsapp_modal_form" enctype="multipart/form-data">
+                <div class="modal-body" style="padding: 20px;">
+                    <p style="font-size: 14px; margin-bottom: 15px;">Sending message to <strong id="campaign_wp_script_lead_name" class="text-primary"></strong> (<span id="campaign_wp_script_lead_phone" class="text-muted"></span>)</p>
+                    
+                    <div class="form-group">
+                        <label for="campaign_modal_script_select" class="control-label">Load Template Script</label>
+                        <select id="campaign_modal_script_select" class="form-control" style="width: 100%;">
+                            <option value="">-- Choose Script --</option>
+                            <option value="form_current" data-message="form_current" data-image="form_current">-- Use Current Form Message --</option>
+                            <?php foreach ($templates as $tmpl) { ?>
+                                <option value="<?= $tmpl['id']; ?>" 
+                                        data-message="<?= e($tmpl['message_text']); ?>"
+                                        data-image="<?= $tmpl['image_path'] ? base_url($tmpl['image_path']) : ''; ?>"
+                                        data-raw-image="<?= $tmpl['image_path']; ?>">
+                                    <?= e($tmpl['title']); ?>
+                                </option>
+                            <?php } ?>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="campaign_modal_message_text" class="control-label">Message Content</label>
+                        <textarea id="campaign_modal_message_text" name="message_text" class="form-control" rows="6" placeholder="Type your message here..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="campaign_modal_media_image" class="control-label">Upload Custom Media Image (Optional)</label>
+                        <input type="file" id="campaign_modal_media_image" name="image" class="form-control" accept="image/*">
+                        <input type="hidden" id="campaign_modal_image_path" name="image_path" value="">
+                    </div>
+
+                    <div id="campaign_modal_image_preview_container" style="display: none; text-align: center; border: 1px dashed #ddd; padding: 10px; border-radius: 4px; margin-top: 10px;">
+                        <p class="bold text-muted" style="margin-bottom: 5px;"><i class="fa fa-image"></i> Media Preview</p>
+                        <img id="campaign_modal_image_preview" src="#" style="max-height: 150px; max-width: 100%; object-fit: contain; border-radius: 4px;" />
+                    </div>
                 </div>
-            </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-success" style="background-color:#25d366; border-color:#25d366; color:#fff; font-weight:bold;">
+                        <i class="fa fa-paper-plane"></i> Send via API
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -380,6 +422,13 @@ $(function() {
 
         const cleanName = (name === '/' || name === '' || !name) ? (company ? company : 'there') : name;
 
+        // Reset modal fields
+        $('#campaign_whatsapp_modal_form')[0].reset();
+        $('#campaign_modal_script_select').val('').trigger('change');
+        $('#campaign_modal_image_preview_container').hide();
+        $('#campaign_modal_image_preview').attr('src', '#');
+        $('#campaign_modal_image_path').val('');
+
         activeCampaignLead = {
             id: leadId,
             name: cleanName,
@@ -388,48 +437,95 @@ $(function() {
         };
 
         $('#campaign_wp_script_lead_name').text(cleanName);
+        $('#campaign_wp_script_lead_phone').text(phone);
         $('#campaign_script_select_modal').modal('show');
     };
 
-    // Handle campaign script select modal button click
-    $(document).on('click', '.campaign-script-select-btn', function() {
+    // Handle template select change in campaign modal
+    $(document).on('change', '#campaign_modal_script_select', function() {
+        const selectedOpt = $(this).find('option:selected');
+        const val = selectedOpt.val();
+
+        if (val === '') {
+            $('#campaign_modal_message_text').val('');
+            $('#campaign_modal_image_preview_container').hide();
+            $('#campaign_modal_image_path').val('');
+            return;
+        }
+
+        let rawMessage = '';
+        let imageUrl = '';
+        let rawImagePath = '';
+
+        if (val === 'form_current') {
+            rawMessage = $('#message_template').val().trim();
+            imageUrl = $('#image_preview').attr('src');
+            // If it's a data url or actual url
+            if ($('#image_preview_container').is(':visible') && imageUrl && imageUrl !== '#') {
+                rawImagePath = uploadedImagePath || '';
+            } else {
+                imageUrl = '';
+            }
+        } else {
+            rawMessage = selectedOpt.data('message') || '';
+            imageUrl = selectedOpt.data('image') || '';
+            rawImagePath = selectedOpt.data('raw-image') || '';
+        }
+
+        if (activeCampaignLead) {
+            const formattedMessage = rawMessage.replace(/{name}/g, activeCampaignLead.name);
+            $('#campaign_modal_message_text').val(formattedMessage);
+        } else {
+            $('#campaign_modal_message_text').val(rawMessage);
+        }
+
+        if (imageUrl) {
+            $('#campaign_modal_image_preview').attr('src', imageUrl);
+            $('#campaign_modal_image_preview_container').show();
+            $('#campaign_modal_image_path').val(rawImagePath);
+        } else {
+            $('#campaign_modal_image_preview_container').hide();
+            $('#campaign_modal_image_path').val('');
+        }
+    });
+
+    // Handle image selection preview inside campaign modal
+    $(document).on('change', '#campaign_modal_media_image', function() {
+        const file = this.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                $('#campaign_modal_image_preview').attr('src', e.target.result);
+                $('#campaign_modal_image_preview_container').show();
+            }
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // Handle campaign modal form submit to send via background API
+    $(document).on('submit', '#campaign_whatsapp_modal_form', function(e) {
+        e.preventDefault();
         if (!activeCampaignLead) return;
 
         const lead = activeCampaignLead;
-        const useForm = $(this).data('use-form');
-        
-        let templateText = '';
-        let imagePath = '';
+        const message = $('#campaign_modal_message_text').val().trim();
 
-        if (useForm) {
-            templateText = $('#message_template').val().trim();
-            if (templateText === '') {
-                alert_float('warning', 'Please enter a message template in the form first.');
-                return;
-            }
-            imagePath = uploadedImagePath || '';
-        } else {
-            templateText = $(this).data('message-template');
-            imagePath = $(this).data('image-path') || '';
+        if (message === '') {
+            alert_float('warning', 'Please enter a message template.');
+            return;
         }
-
-        const message = templateText.replace(/{name}/g, lead.name);
 
         // Hide the modal
         $('#campaign_script_select_modal').modal('hide');
 
-        // Construct FormData for AJAX post
-        const formData = new FormData();
+        const formData = new FormData(this);
         formData.append('lead_id', lead.id);
         formData.append('phone_number', lead.phone);
-        formData.append('message_text', message);
-        formData.append('image_path', imagePath);
-
+        
         if (typeof(csrfData) !== 'undefined') {
             formData.append(csrfData.token_name, csrfData.hash);
         }
 
-        // Add loading state or just send
         $.ajax({
             url: admin_url + 'cold_wp/log_send',
             type: 'POST',
@@ -458,10 +554,24 @@ $(function() {
         activeCampaignLead = null;
     });
 
+    // Handle lead status filter
+    $(document).on('change', '#lead_status_filter', function() {
+        const val = $(this).val();
+        if (val) {
+            $('tr[id^="lead_row_"]').hide();
+            $('tr[data-lead-status="' + val + '"]').show();
+        } else {
+            $('tr[id^="lead_row_"]').show();
+        }
+        updateStats();
+    });
+
     function updateStats() {
-        const total = $('tr[id^="lead_row_"]').length;
-        const sent = $('.status-td .label-success').length;
+        const visibleRows = $('tr[id^="lead_row_"]:visible');
+        const total = visibleRows.length;
+        const sent = visibleRows.find('.status-td .label-success').length;
         $('#sent_stats').text(sent + ' / ' + total + ' Sent');
+        $('#queue_count').text(total);
     }
 });
 </script>

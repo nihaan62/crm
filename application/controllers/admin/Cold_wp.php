@@ -48,20 +48,25 @@ class Cold_wp extends AdminController
         $lead_ids_str = $this->input->get('ids');
         $leads = [];
 
+        $db_prefix = db_prefix();
         if (!empty($lead_ids_str)) {
             $ids = explode(',', $lead_ids_str);
             $ids = array_filter(array_map('intval', $ids));
             
             if (count($ids) > 0) {
-                $this->db->where_in('id', $ids);
-                $leads = $this->db->get(db_prefix() . 'leads')->result_array();
+                $this->db->select($db_prefix . 'leads.*, ' . $db_prefix . 'leads_status.name as status_name');
+                $this->db->join($db_prefix . 'leads_status', $db_prefix . 'leads_status.id = ' . $db_prefix . 'leads.status', 'left');
+                $this->db->where_in($db_prefix . 'leads.id', $ids);
+                $leads = $this->db->get($db_prefix . 'leads')->result_array();
             }
         } else {
             // Load all active leads (not lost, not junk) by default
+            $this->db->select($db_prefix . 'leads.*, ' . $db_prefix . 'leads_status.name as status_name');
+            $this->db->join($db_prefix . 'leads_status', $db_prefix . 'leads_status.id = ' . $db_prefix . 'leads.status', 'left');
             $this->db->where('lost', 0);
             $this->db->where('junk', 0);
             $this->db->order_by('name', 'asc');
-            $leads = $this->db->get(db_prefix() . 'leads')->result_array();
+            $leads = $this->db->get($db_prefix . 'leads')->result_array();
         }
 
         $templates = $this->db->order_by('title', 'asc')->get(db_prefix() . 'cold_wp_templates')->result_array();
@@ -120,6 +125,26 @@ class Cold_wp extends AdminController
             'message' => $message_text,
             'type' => 'general'
         ];
+
+        if (!empty($image_path) && file_exists(FCPATH . $image_path)) {
+            $image_data = file_get_contents(FCPATH . $image_path);
+            $base64_image = base64_encode($image_data);
+            
+            $payload['image'] = $base64_image;
+            $payload['media'] = $base64_image;
+            $payload['file'] = $base64_image;
+            $payload['pdf'] = $base64_image;
+            $payload['filename'] = pathinfo($image_path, PATHINFO_BASENAME);
+            
+            $mime = mime_content_type(FCPATH . $image_path);
+            $data_uri = 'data:' . $mime . ';base64,' . $base64_image;
+            $payload['image_uri'] = $data_uri;
+            $payload['media_uri'] = $data_uri;
+            
+            $payload['image_url'] = base_url($image_path);
+            $payload['media_url'] = base_url($image_path);
+            $payload['file_url'] = base_url($image_path);
+        }
 
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);

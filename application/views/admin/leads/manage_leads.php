@@ -354,34 +354,57 @@
 
 <!-- WhatsApp Script Selection Modal -->
 <div class="modal fade" id="whatsapp_script_select_modal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-sm" role="document" style="margin-top: 15%;">
+    <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                <h4 class="modal-title text-center bold"><i class="fa fa-whatsapp text-success"></i> Choose Message Script</h4>
+                <h4 class="modal-title bold"><i class="fa fa-whatsapp text-success"></i> Send WhatsApp Message</h4>
             </div>
-            <div class="modal-body text-center" style="padding: 20px;">
-                <p style="font-size: 14px; margin-bottom: 20px;">Select the template you want to send to <br><strong id="wp_script_lead_name" class="text-primary"></strong></p>
-                <div style="display: flex; flex-direction: column; gap: 10px;">
-                    <?php 
-                    $db_templates = $this->db->order_by('title', 'asc')->get(db_prefix() . 'cold_wp_templates')->result_array();
-                    if (count($db_templates) > 0) {
-                        foreach ($db_templates as $tmpl) {
-                    ?>
-                            <button type="button" class="btn btn-primary btn-block whatsapp-script-btn" 
-                                    data-message-template="<?= e($tmpl['message_text']); ?>" 
-                                    data-image-path="<?= $tmpl['image_path']; ?>"
-                                    style="font-weight: bold; margin-bottom: 5px;">
-                                <?= e($tmpl['title']); ?>
-                            </button>
-                    <?php 
-                        }
-                    } else { 
-                    ?>
-                        <p class="text-muted text-center">No saved templates found. Please create templates in the Cold Campaign page.</p>
-                    <?php } ?>
+            <form id="lead_whatsapp_modal_form" enctype="multipart/form-data">
+                <div class="modal-body" style="padding: 20px;">
+                    <p style="font-size: 14px; margin-bottom: 15px;">Sending message to <strong id="wp_script_lead_name" class="text-primary"></strong> (<span id="wp_script_lead_phone" class="text-muted"></span>)</p>
+                    
+                    <div class="form-group">
+                        <label for="modal_script_select" class="control-label">Load Template Script</label>
+                        <select id="modal_script_select" class="form-control" style="width: 100%;">
+                            <option value="">-- Choose Script --</option>
+                            <?php 
+                            $db_templates = $this->db->order_by('title', 'asc')->get(db_prefix() . 'cold_wp_templates')->result_array();
+                            foreach ($db_templates as $tmpl) {
+                            ?>
+                                <option value="<?= $tmpl['id']; ?>" 
+                                        data-message="<?= e($tmpl['message_text']); ?>"
+                                        data-image="<?= $tmpl['image_path'] ? base_url($tmpl['image_path']) : ''; ?>"
+                                        data-raw-image="<?= $tmpl['image_path']; ?>">
+                                    <?= e($tmpl['title']); ?>
+                                </option>
+                            <?php } ?>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="modal_message_text" class="control-label">Message Content</label>
+                        <textarea id="modal_message_text" name="message_text" class="form-control" rows="6" placeholder="Type your message here..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="modal_media_image" class="control-label">Upload Custom Media Image (Optional)</label>
+                        <input type="file" id="modal_media_image" name="image" class="form-control" accept="image/*">
+                        <input type="hidden" id="modal_image_path" name="image_path" value="">
+                    </div>
+
+                    <div id="modal_image_preview_container" style="display: none; text-align: center; border: 1px dashed #ddd; padding: 10px; border-radius: 4px; margin-top: 10px;">
+                        <p class="bold text-muted" style="margin-bottom: 5px;"><i class="fa fa-image"></i> Media Preview</p>
+                        <img id="modal_image_preview" src="#" style="max-height: 150px; max-width: 100%; object-fit: contain; border-radius: 4px;" />
+                    </div>
                 </div>
-            </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-success" style="background-color:#25d366; border-color:#25d366; color:#fff; font-weight:bold;">
+                        <i class="fa fa-paper-plane"></i> Send via API
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -439,42 +462,102 @@
             activeWpButton = $(this);
             const name = activeWpButton.data('name');
             const company = activeWpButton.data('company');
+            const phone = activeWpButton.data('phone');
             const cleanName = (name === '/' || name === '' || !name) ? (company ? company : 'there') : name;
             
+            // Reset modal fields
+            $('#lead_whatsapp_modal_form')[0].reset();
+            $('#modal_script_select').val('').trigger('change');
+            $('#modal_image_preview_container').hide();
+            $('#modal_image_preview').attr('src', '#');
+            $('#modal_image_path').val('');
+            
             $('#wp_script_lead_name').text(cleanName);
+            $('#wp_script_lead_phone').text(phone);
             $('#whatsapp_script_select_modal').modal('show');
         });
 
-        // Handle script selection click
-        $(document).on('click', '.whatsapp-script-btn', function() {
+        // Handle script select change in the modal
+        $(document).on('change', '#modal_script_select', function() {
+            const selectedOpt = $(this).find('option:selected');
+            if (selectedOpt.val() === '') {
+                $('#modal_message_text').val('');
+                $('#modal_image_preview_container').hide();
+                $('#modal_image_path').val('');
+                return;
+            }
+
+            const rawMessage = selectedOpt.data('message') || '';
+            const imageUrl = selectedOpt.data('image') || '';
+            const rawImagePath = selectedOpt.data('raw-image') || '';
+
+            if (activeWpButton) {
+                const name = activeWpButton.data('name');
+                const company = activeWpButton.data('company');
+                const cleanName = (name === '/' || name === '' || !name) ? (company ? company : 'there') : name;
+                
+                const formattedMessage = rawMessage.replace(/{name}/g, cleanName);
+                $('#modal_message_text').val(formattedMessage);
+            } else {
+                $('#modal_message_text').val(rawMessage);
+            }
+
+            if (imageUrl) {
+                $('#modal_image_preview').attr('src', imageUrl);
+                $('#modal_image_preview_container').show();
+                $('#modal_image_path').val(rawImagePath);
+            } else {
+                $('#modal_image_preview_container').hide();
+                $('#modal_image_path').val('');
+            }
+        });
+
+        // Handle image selection preview inside the modal
+        $(document).on('change', '#modal_media_image', function() {
+            const file = this.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    $('#modal_image_preview').attr('src', e.target.result);
+                    $('#modal_image_preview_container').show();
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Handle modal form submit to send via background API
+        $(document).on('submit', '#lead_whatsapp_modal_form', function(e) {
+            e.preventDefault();
             if (!activeWpButton) return;
 
             const btn = activeWpButton;
-            const templateText = $(this).data('message-template');
-            const imagePath = $(this).data('image-path') || '';
-
             const leadId = btn.data('id');
-            const name = btn.data('name');
-            const company = btn.data('company');
             const phone = btn.data('phone');
-            
-            const cleanName = (name === '/' || name === '' || !name) ? (company ? company : 'there') : name;
-            const message = templateText.replace(/{name}/g, cleanName);
-            
+            const message = $('#modal_message_text').val().trim();
+
+            if (message === '') {
+                alert_float('warning', 'Please enter a message template.');
+                return;
+            }
+
             // Hide the modal
             $('#whatsapp_script_select_modal').modal('hide');
+
+            const formData = new FormData(this);
+            formData.append('lead_id', leadId);
+            formData.append('phone_number', phone);
             
-            // Send AJAX to log it
+            if (typeof(csrfData) !== 'undefined') {
+                formData.append(csrfData.token_name, csrfData.hash);
+            }
+
+            // Send AJAX
             $.ajax({
                 url: admin_url + 'cold_wp/log_send',
                 type: 'POST',
-                data: {
-                    lead_id: leadId,
-                    phone_number: phone,
-                    message_text: message,
-                    image_path: imagePath,
-                    ...(typeof(csrfData) !== 'undefined' ? { [csrfData.token_name]: csrfData.hash } : {})
-                },
+                data: formData,
+                contentType: false,
+                processData: false,
                 success: function(response) {
                     const res = JSON.parse(response);
                     if (res.success) {
@@ -496,8 +579,7 @@
                     alert_float('danger', 'Failed to log message status on the server.');
                 }
             });
-            
-            // Reset active button
+
             activeWpButton = null;
         });
 
