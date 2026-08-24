@@ -352,6 +352,32 @@
     </div>
 </div>
 
+<!-- WhatsApp Script Selection Modal -->
+<div class="modal fade" id="whatsapp_script_select_modal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-sm" role="document" style="margin-top: 15%;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title text-center bold"><i class="fa fa-whatsapp text-success"></i> Choose Message Script</h4>
+            </div>
+            <div class="modal-body text-center" style="padding: 20px;">
+                <p style="font-size: 14px; margin-bottom: 20px;">Select the template you want to send to <br><strong id="wp_script_lead_name" class="text-primary"></strong></p>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <button type="button" class="btn btn-primary btn-block whatsapp-script-btn" data-script-type="loan" style="font-weight: bold; margin-bottom: 5px;">
+                        <i class="fa fa-money"></i> Loan Script
+                    </button>
+                    <button type="button" class="btn btn-info btn-block whatsapp-script-btn" data-script-type="it" style="font-weight: bold; margin-bottom: 5px;">
+                        <i class="fa fa-laptop"></i> IT Script
+                    </button>
+                    <button type="button" class="btn btn-default btn-block whatsapp-script-btn" data-script-type="general" style="font-weight: bold;">
+                        <i class="fa fa-commenting"></i> General Script
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <?php init_tail(); ?>
 <script>
     var openLeadID = '<?= e($leadid); ?>';
@@ -397,17 +423,41 @@
             }
         });
 
-        // Handle single WhatsApp send button click
+        // Define the WhatsApp scripts
+        const whatsappScripts = {
+            loan: "Hello {name}, we have an exciting loan offer for you! Please let us know if you are interested.",
+            it: "Hello {name}, we offer professional IT services to help grow your business. Are you available for a quick chat?",
+            general: "Hello {name}, we tried to contact you regarding your loan request. Please let us know when you are available for a call."
+        };
+
+        let activeWpButton = null;
+
+        // Handle single WhatsApp send button click - opens script selection modal
         $(document).on('click', '.send-single-wp', function(e) {
             e.preventDefault();
-            const btn = $(this);
+            activeWpButton = $(this);
+            const name = activeWpButton.data('name');
+            
+            $('#wp_script_lead_name').text(name);
+            $('#whatsapp_script_select_modal').modal('show');
+        });
+
+        // Handle script selection click
+        $(document).on('click', '.whatsapp-script-btn', function() {
+            if (!activeWpButton) return;
+
+            const btn = activeWpButton;
+            const scriptType = $(this).data('script-type');
+            const templateText = whatsappScripts[scriptType] || whatsappScripts.general;
+
             const leadId = btn.data('id');
             const name = btn.data('name');
             const phone = btn.data('phone');
             
-            // Define message template
-            const templateText = "Hello {name}, we tried to contact you regarding your loan request. Please let us know when you are available for a call.";
             const message = templateText.replace(/{name}/g, name);
+            
+            // Hide the modal
+            $('#whatsapp_script_select_modal').modal('hide');
             
             // Copy to clipboard
             navigator.clipboard.writeText(message).then(function() {
@@ -453,6 +503,9 @@
             let cleanPhone = phone.toString().replace(/[^0-9]/g, '');
             const waUrl = 'https://api.whatsapp.com/send?phone=' + cleanPhone + '&text=' + encodeURIComponent(message);
             window.open(waUrl, '_blank');
+
+            // Reset active button
+            activeWpButton = null;
         });
 
         // Listen to DataTables pre-XHR event to append the custom filter parameter
