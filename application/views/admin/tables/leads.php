@@ -45,7 +45,7 @@ $rules = [
     }),
 ];
 
-$rules[] = App_table_filter::new('batch_name', 'SelectRule')->label('Batch Name')->options(function ($ci) {
+$rules[] = App_table_filter::new('batch_name', 'SelectRule')->label('Section Name / Batch Name')->options(function ($ci) {
     $batches = $ci->db->select('DISTINCT(batch_name)')->where('batch_name IS NOT NULL')->where('batch_name !=', '')->get(db_prefix() . 'leads')->result_array();
     return collect($batches)->map(fn ($batch) => [
         'value' => $batch['batch_name'],

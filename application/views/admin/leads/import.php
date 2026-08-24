@@ -33,7 +33,7 @@
                                     <?= form_open_multipart($this->uri->uri_string(), ['id' => 'import_form']); ?>
                                     <?= form_hidden('leads_import', 'true'); ?>
                                     <?= render_input('file_csv', 'choose_csv_file', '', 'file'); ?>
-                                    <?= render_input('batch_name', 'Batch Name / Upload Tag (e.g. Today Leads, Yesterday Leads)', $this->input->post('batch_name')); ?>
+                                    <?= render_input('batch_name', 'Section Name / Batch Name (e.g. Today Leads, Yesterday Leads)', $this->input->post('batch_name')); ?>
                                     <?= render_leads_status_select($statuses, ($this->input->post('status') ? $this->input->post('status') : get_option('leads_default_status')), _l('lead_import_status') . ' (fallback)', 'status', [], true);
 echo render_leads_source_select($sources, ($this->input->post('source') ? $this->input->post('source') : get_option('leads_default_source')), _l('lead_import_source') . ' (fallback)');
 ?>

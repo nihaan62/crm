@@ -1283,7 +1283,7 @@ class Leads extends AdminController
             $tags                  = $this->input->post('tags');
             $last_contact          = $this->input->post('last_contact');
             $lost                  = $this->input->post('lost');
-            $has_permission_delete = staff_can('delete',  'leads');
+            $has_permission_delete = is_admin() || staff_can('delete',  'leads');
             if (is_array($ids)) {
                 foreach ($ids as $id) {
                     if ($this->input->post('mass_delete')) {
@@ -1305,9 +1305,13 @@ class Leads extends AdminController
                             if ($source) {
                                 $update['source'] = $source;
                             }
-                            if ($assigned) {
-                                $update['assigned'] = $assigned;
-                            }
+                             if ($assigned) {
+                                 $update['assigned'] = $assigned;
+                                 $current_lead = $this->leads_model->get($id);
+                                 if ($current_lead && $current_lead->assigned != $assigned) {
+                                     $this->leads_model->lead_assigned_member_notification($id, $assigned);
+                                 }
+                             }
                             if ($last_contact) {
                                 $last_contact          = to_sql_date($last_contact, true);
                                 $update['lastcontact'] = $last_contact;

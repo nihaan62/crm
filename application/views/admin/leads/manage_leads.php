@@ -141,7 +141,7 @@
                                                     </h4>
                                                 </div>
                                                 <div class="modal-body">
-                                                    <?php if (staff_can('delete', 'leads')) { ?>
+                                                    <?php if (is_admin() || staff_can('delete', 'leads')) { ?>
                                                     <div class="checkbox checkbox-danger">
                                                         <input type="checkbox" name="mass_delete" id="mass_delete">
                                                         <label
