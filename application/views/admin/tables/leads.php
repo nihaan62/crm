@@ -133,6 +133,11 @@ return App_table::find('leads')
             $where[] = $filtersWhere;
         }
 
+        if ($this->ci->input->post('batch_name')) {
+            $batch_name = $this->ci->input->post('batch_name');
+            array_push($where, 'AND ' . db_prefix() . 'leads.batch_name = "' . $this->ci->db->escape_str($batch_name) . '"');
+        }
+
         if (staff_cant('view', 'leads')) {
             array_push($where, 'AND (assigned =' . get_staff_user_id() . ' OR addedfrom = ' . get_staff_user_id() . ' OR is_public = 1)');
         }

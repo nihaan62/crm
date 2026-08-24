@@ -58,6 +58,15 @@
                                 <?= _l('import_leads'); ?>
                             </a>
                             <?php } ?>
+                            <select name="view_batch_name" class="selectpicker" data-width="auto" data-none-selected-text="All Sections" data-live-search="true">
+                                <option value="">All Sections</option>
+                                <?php 
+                                $batches = $this->db->select('DISTINCT(batch_name)')->where('batch_name IS NOT NULL')->where('batch_name !=', '')->order_by('batch_name', 'asc')->get(db_prefix() . 'leads')->result_array();
+                                foreach ($batches as $batch) {
+                                    echo '<option value="' . e($batch['batch_name']) . '">' . e($batch['batch_name']) . '</option>';
+                                }
+                                ?>
+                            </select>
                         </div>
                         <div>
                             <?php if ($this->session->userdata('leads_kanban_view') == 'true') { ?>
@@ -364,6 +373,35 @@
             $('#whatsapp_call_link').attr('href', 'https://api.whatsapp.com/send?phone=' + cleanPhone);
             
             $('#lead_call_options_modal').modal('show');
+        });
+
+        // Listen to DataTables pre-XHR event to append the custom filter parameter
+        $('table.table-leads').on('preXhr.dt', function(e, settings, data) {
+            data.batch_name = $('select[name="view_batch_name"]').val();
+        });
+
+        // When the batch name filter select changes
+        $('body').on('change', 'select[name="view_batch_name"]', function() {
+            var val = $(this).val();
+            // 1. If we are on Kanban view
+            if ($('#kan-ban').length > 0) {
+                // Find or create the hidden input in #kanban-params
+                var hiddenInput = $('#kanban-params input[name="batch_name"]');
+                if (hiddenInput.length === 0) {
+                    hiddenInput = $('<input>').attr({
+                        type: 'hidden',
+                        name: 'batch_name'
+                    });
+                    $('#kanban-params').append(hiddenInput);
+                }
+                hiddenInput.val(val);
+                leads_kanban();
+            } else {
+                // 2. If we are on List view (DataTables)
+                if ($.fn.DataTable.isDataTable('.table-leads')) {
+                    $('.table-leads').DataTable().ajax.reload();
+                }
+            }
         });
     });
 

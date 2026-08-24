@@ -50,6 +50,11 @@ class LeadsKanban extends AbstractKanban
         $this->ci->db->join(db_prefix() . 'staff', db_prefix() . 'staff.staffid=' . db_prefix() . 'leads.assigned', 'left');
         $this->ci->db->where('status', $this->status);
 
+        $batch_name = $this->ci->input->get('batch_name') ?: $this->ci->input->post('batch_name');
+        if ($batch_name) {
+            $this->ci->db->where(db_prefix() . 'leads.batch_name', $batch_name);
+        }
+
         if (staff_cant('view', 'leads')) {
             $this->ci->db->where('(assigned = ' . get_staff_user_id() . ' OR addedfrom=' . get_staff_user_id() . ' OR is_public=1)');
         }
