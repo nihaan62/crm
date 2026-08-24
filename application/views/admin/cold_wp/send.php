@@ -137,8 +137,8 @@
                                     </thead>
                                     <tbody>
                                         <?php foreach ($leads as $lead) { ?>
-                                            <tr id="lead_row_<?= $lead['id']; ?>" data-id="<?= $lead['id']; ?>" data-name="<?= e($lead['name']); ?>" data-phone="<?= e($lead['phonenumber']); ?>">
-                                                <td class="bold"><?= e($lead['name']); ?></td>
+                                            <tr id="lead_row_<?= $lead['id']; ?>" data-id="<?= $lead['id']; ?>" data-name="<?= e($lead['name']); ?>" data-company="<?= e($lead['company']); ?>" data-phone="<?= e($lead['phonenumber']); ?>">
+                                                <td class="bold"><?= e($lead['name'] == '/' || empty($lead['name']) ? ($lead['company'] ? $lead['company'] : '/') : $lead['name']); ?></td>
                                                 <td><?= e($lead['phonenumber']); ?></td>
                                                 <td class="text-center status-td">
                                                     <span class="label label-default">Pending</span>
@@ -155,6 +155,41 @@
                             </div>
                         <?php } ?>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- WhatsApp Script Selection Modal for Campaign Page -->
+<div class="modal fade" id="campaign_script_select_modal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-sm" role="document" style="margin-top: 15%;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title text-center bold"><i class="fa fa-whatsapp text-success"></i> Choose Message Script</h4>
+            </div>
+            <div class="modal-body text-center" style="padding: 20px;">
+                <p style="font-size: 14px; margin-bottom: 20px;">Select the template you want to send to <br><strong id="campaign_wp_script_lead_name" class="text-primary"></strong></p>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <!-- Current Form Content Option -->
+                    <button type="button" class="btn btn-success btn-block campaign-script-select-btn" data-use-form="true" style="font-weight: bold; margin-bottom: 10px;">
+                        <i class="fa fa-pencil"></i> Use Current Form Message
+                    </button>
+                    <hr style="margin: 10px 0;" />
+                    <!-- Saved Templates Options -->
+                    <?php if (count($templates) > 0) { ?>
+                        <?php foreach ($templates as $tmpl) { ?>
+                            <button type="button" class="btn btn-primary btn-block campaign-script-select-btn" 
+                                    data-message-template="<?= e($tmpl['message_text']); ?>" 
+                                    data-image-path="<?= $tmpl['image_path']; ?>"
+                                    style="font-weight: bold; margin-bottom: 5px;">
+                                <?= e($tmpl['title']); ?>
+                            </button>
+                        <?php } ?>
+                    <?php } else { ?>
+                        <p class="text-muted text-center">No saved templates found.</p>
+                    <?php } ?>
                 </div>
             </div>
         </div>
@@ -334,35 +369,67 @@ $(function() {
         }
     });
 
-    // Send WhatsApp Action
+    let activeCampaignLead = null;
+
+    // Send WhatsApp Action - opens campaign script select modal
     window.sendWhatsApp = function(leadId) {
         const row = $('#lead_row_' + leadId);
         const name = row.data('name');
+        const company = row.data('company');
         const phone = row.data('phone');
+
+        const cleanName = (name === '/' || name === '' || !name) ? (company ? company : 'there') : name;
+
+        activeCampaignLead = {
+            id: leadId,
+            name: cleanName,
+            phone: phone,
+            row: row
+        };
+
+        $('#campaign_wp_script_lead_name').text(cleanName);
+        $('#campaign_script_select_modal').modal('show');
+    };
+
+    // Handle campaign script select modal button click
+    $(document).on('click', '.campaign-script-select-btn', function() {
+        if (!activeCampaignLead) return;
+
+        const lead = activeCampaignLead;
+        const useForm = $(this).data('use-form');
         
-        let templateText = $('#message_template').val().trim();
-        if (templateText === '') {
-            alert_float('warning', 'Please enter a message template.');
-            return;
+        let templateText = '';
+        let imagePath = '';
+
+        if (useForm) {
+            templateText = $('#message_template').val().trim();
+            if (templateText === '') {
+                alert_float('warning', 'Please enter a message template in the form first.');
+                return;
+            }
+            imagePath = uploadedImagePath || '';
+        } else {
+            templateText = $(this).data('message-template');
+            imagePath = $(this).data('image-path') || '';
         }
 
-        // Replace placeholder
-        const message = templateText.replace(/{name}/g, name);
+        const message = templateText.replace(/{name}/g, lead.name);
 
-        // Prepare Form Data for background logging
-        const form = $('#campaign_form')[0];
-        const formData = new FormData(form);
-        formData.append('lead_id', leadId);
-        formData.append('phone_number', phone);
+        // Hide the modal
+        $('#campaign_script_select_modal').modal('hide');
+
+        // Construct FormData for AJAX post
+        const formData = new FormData();
+        formData.append('lead_id', lead.id);
+        formData.append('phone_number', lead.phone);
         formData.append('message_text', message);
-        if (uploadedImagePath) {
-            formData.append('image_path', uploadedImagePath);
-        }
+        formData.append('image_path', imagePath);
+
         if (typeof(csrfData) !== 'undefined') {
             formData.append(csrfData.token_name, csrfData.hash);
         }
 
-        // Log the send action via AJAX
+        // Add loading state or just send
         $.ajax({
             url: admin_url + 'cold_wp/log_send',
             type: 'POST',
@@ -372,13 +439,9 @@ $(function() {
             success: function(response) {
                 const res = JSON.parse(response);
                 if (res.success) {
-                    if (res.image_path) {
-                        uploadedImagePath = res.image_path; // Cache the uploaded image path for subsequent sends
-                    }
-                    
                     // Update Row status
-                    row.find('.status-td').html('<span class="label label-success"><i class="fa fa-check"></i> Sent</span>');
-                    row.find('.send-wp-btn').removeClass('btn-success').addClass('btn-default').html('<i class="fa fa-refresh"></i> Re-send');
+                    lead.row.find('.status-td').html('<span class="label label-success"><i class="fa fa-check"></i> Sent</span>');
+                    lead.row.find('.send-wp-btn').removeClass('btn-success').addClass('btn-default').html('<i class="fa fa-refresh"></i> Re-send');
                     
                     // Update stats
                     updateStats();
@@ -391,7 +454,9 @@ $(function() {
             }
         });
 
-    };
+        // Reset active lead
+        activeCampaignLead = null;
+    });
 
     function updateStats() {
         const total = $('tr[id^="lead_row_"]').length;

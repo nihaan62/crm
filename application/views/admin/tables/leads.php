@@ -292,9 +292,9 @@ return App_table::find('leads')
             
             $wasWpSent = total_rows('cold_wp_messages', ['lead_id' => $aRow['id']]) > 0;
             if ($wasWpSent) {
-                $wpBtn = '<button type="button" class="btn btn-default btn-xs whatsapp-sent" style="display:block; width:100%; background-color:#dcdcdc; color:#777;" title="sended" disabled><i class="fa fa-whatsapp"></i> WhatsApp</button>';
+                $wpBtn = '<button type="button" class="btn btn-default btn-xs send-single-wp" style="display:block; width:100%; background-color:#dcdcdc; color:#777;" title="sended" data-id="' . $aRow['id'] . '" data-name="' . e($aRow['name']) . '" data-company="' . e($aRow['company']) . '" data-phone="' . e($aRow['phonenumber']) . '"><i class="fa fa-refresh"></i> Re-send</button>';
             } else {
-                $wpBtn = '<button type="button" class="btn btn-success btn-xs send-single-wp" style="display:block; width:100%; background-color:#25d366; border-color:#25d366; color:#fff;" data-id="' . $aRow['id'] . '" data-name="' . e($aRow['name']) . '" data-phone="' . e($aRow['phonenumber']) . '"><i class="fa fa-whatsapp"></i> WhatsApp</button>';
+                $wpBtn = '<button type="button" class="btn btn-success btn-xs send-single-wp" style="display:block; width:100%; background-color:#25d366; border-color:#25d366; color:#fff;" data-id="' . $aRow['id'] . '" data-name="' . e($aRow['name']) . '" data-company="' . e($aRow['company']) . '" data-phone="' . e($aRow['phonenumber']) . '"><i class="fa fa-whatsapp"></i> WhatsApp</button>';
             }
             
             $row[] = $detailsBtn . $wpBtn;

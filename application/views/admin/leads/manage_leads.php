@@ -363,15 +363,23 @@
             <div class="modal-body text-center" style="padding: 20px;">
                 <p style="font-size: 14px; margin-bottom: 20px;">Select the template you want to send to <br><strong id="wp_script_lead_name" class="text-primary"></strong></p>
                 <div style="display: flex; flex-direction: column; gap: 10px;">
-                    <button type="button" class="btn btn-primary btn-block whatsapp-script-btn" data-script-type="loan" style="font-weight: bold; margin-bottom: 5px;">
-                        <i class="fa fa-money"></i> Loan Script
-                    </button>
-                    <button type="button" class="btn btn-info btn-block whatsapp-script-btn" data-script-type="it" style="font-weight: bold; margin-bottom: 5px;">
-                        <i class="fa fa-laptop"></i> IT Script
-                    </button>
-                    <button type="button" class="btn btn-default btn-block whatsapp-script-btn" data-script-type="general" style="font-weight: bold;">
-                        <i class="fa fa-commenting"></i> General Script
-                    </button>
+                    <?php 
+                    $db_templates = $this->db->order_by('title', 'asc')->get(db_prefix() . 'cold_wp_templates')->result_array();
+                    if (count($db_templates) > 0) {
+                        foreach ($db_templates as $tmpl) {
+                    ?>
+                            <button type="button" class="btn btn-primary btn-block whatsapp-script-btn" 
+                                    data-message-template="<?= e($tmpl['message_text']); ?>" 
+                                    data-image-path="<?= $tmpl['image_path']; ?>"
+                                    style="font-weight: bold; margin-bottom: 5px;">
+                                <?= e($tmpl['title']); ?>
+                            </button>
+                    <?php 
+                        }
+                    } else { 
+                    ?>
+                        <p class="text-muted text-center">No saved templates found. Please create templates in the Cold Campaign page.</p>
+                    <?php } ?>
                 </div>
             </div>
         </div>
@@ -423,13 +431,6 @@
             }
         });
 
-        // Define the WhatsApp scripts
-        const whatsappScripts = {
-            loan: "Hello {name}, we have an exciting loan offer for you! Please let us know if you are interested.",
-            it: "Hello {name}, we offer professional IT services to help grow your business. Are you available for a quick chat?",
-            general: "Hello {name}, we tried to contact you regarding your loan request. Please let us know when you are available for a call."
-        };
-
         let activeWpButton = null;
 
         // Handle single WhatsApp send button click - opens script selection modal
@@ -437,8 +438,10 @@
             e.preventDefault();
             activeWpButton = $(this);
             const name = activeWpButton.data('name');
+            const company = activeWpButton.data('company');
+            const cleanName = (name === '/' || name === '' || !name) ? (company ? company : 'there') : name;
             
-            $('#wp_script_lead_name').text(name);
+            $('#wp_script_lead_name').text(cleanName);
             $('#whatsapp_script_select_modal').modal('show');
         });
 
@@ -447,14 +450,16 @@
             if (!activeWpButton) return;
 
             const btn = activeWpButton;
-            const scriptType = $(this).data('script-type');
-            const templateText = whatsappScripts[scriptType] || whatsappScripts.general;
+            const templateText = $(this).data('message-template');
+            const imagePath = $(this).data('image-path') || '';
 
             const leadId = btn.data('id');
             const name = btn.data('name');
+            const company = btn.data('company');
             const phone = btn.data('phone');
             
-            const message = templateText.replace(/{name}/g, name);
+            const cleanName = (name === '/' || name === '' || !name) ? (company ? company : 'there') : name;
+            const message = templateText.replace(/{name}/g, cleanName);
             
             // Hide the modal
             $('#whatsapp_script_select_modal').modal('hide');
@@ -467,12 +472,13 @@
                     lead_id: leadId,
                     phone_number: phone,
                     message_text: message,
+                    image_path: imagePath,
                     ...(typeof(csrfData) !== 'undefined' ? { [csrfData.token_name]: csrfData.hash } : {})
                 },
                 success: function(response) {
                     const res = JSON.parse(response);
                     if (res.success) {
-                        // Change button appearance to grey/disabled
+                        // Change button appearance to grey/Re-send (clickable)
                         btn.removeClass('btn-success')
                            .addClass('btn-default')
                            .css({
@@ -481,8 +487,7 @@
                                'color': '#777'
                            })
                            .attr('title', 'sended')
-                           .prop('disabled', true)
-                           .html('<i class="fa fa-whatsapp"></i> WhatsApp');
+                           .html('<i class="fa fa-refresh"></i> Re-send');
                     } else {
                         alert_float('danger', res.message);
                     }
