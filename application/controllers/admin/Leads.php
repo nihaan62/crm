@@ -21,6 +21,12 @@ class Leads extends AdminController
         if (!$this->db->field_exists('batch_name', $db_prefix . 'leads')) {
             $this->db->query("ALTER TABLE `{$db_prefix}leads` ADD COLUMN `batch_name` VARCHAR(191) DEFAULT NULL");
         }
+        if (!$this->db->field_exists('click_1', $db_prefix . 'leads')) {
+            $this->db->query("ALTER TABLE `{$db_prefix}leads` ADD COLUMN `click_1` INT DEFAULT 0");
+        }
+        if (!$this->db->field_exists('click_2', $db_prefix . 'leads')) {
+            $this->db->query("ALTER TABLE `{$db_prefix}leads` ADD COLUMN `click_2` INT DEFAULT 0");
+        }
     }
 
     /* List all leads */
@@ -1241,6 +1247,26 @@ class Leads extends AdminController
 
         $data['title'] = _l('import');
         $this->load->view('admin/leads/import', $data);
+    }
+
+    public function track_click($lead_id, $type)
+    {
+        if (!is_staff_member()) {
+            ajax_access_denied();
+        }
+
+        $lead_id = (int)$lead_id;
+        $type = (int)$type;
+
+        if ($type === 1) {
+            $this->db->where('id', $lead_id);
+            $this->db->update(db_prefix() . 'leads', ['click_1' => 1]);
+        } elseif ($type === 2) {
+            $this->db->where('id', $lead_id);
+            $this->db->update(db_prefix() . 'leads', ['click_2' => 1]);
+        }
+
+        echo json_encode(['success' => true]);
     }
 
     public function validate_unique_field()

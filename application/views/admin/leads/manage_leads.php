@@ -58,15 +58,17 @@
                                 <?= _l('import_leads'); ?>
                             </a>
                             <?php } ?>
-                            <select name="view_batch_name" class="selectpicker" data-width="auto" data-none-selected-text="All Sections" data-live-search="true">
-                                <option value="">All Sections</option>
-                                <?php 
-                                $batches = $this->db->select('DISTINCT(batch_name)')->where('batch_name IS NOT NULL')->where('batch_name !=', '')->order_by('batch_name', 'asc')->get(db_prefix() . 'leads')->result_array();
-                                foreach ($batches as $batch) {
-                                    echo '<option value="' . e($batch['batch_name']) . '">' . e($batch['batch_name']) . '</option>';
-                                }
-                                ?>
-                            </select>
+                            <div class="tw-inline-block" style="min-width: 150px; vertical-align: middle;">
+                                <select name="view_batch_name" class="selectpicker" data-width="100%" data-none-selected-text="All Sections" data-live-search="true">
+                                    <option value="">All Sections</option>
+                                    <?php 
+                                    $batches = $this->db->select('DISTINCT(batch_name)')->where('batch_name IS NOT NULL')->where('batch_name !=', '')->order_by('batch_name', 'asc')->get(db_prefix() . 'leads')->result_array();
+                                    foreach ($batches as $batch) {
+                                        echo '<option value="' . e($batch['batch_name']) . '">' . e($batch['batch_name']) . '</option>';
+                                    }
+                                    ?>
+                                </select>
+                            </div>
                         </div>
                         <div>
                             <?php if ($this->session->userdata('leads_kanban_view') == 'true') { ?>
@@ -272,10 +274,17 @@
                                     'th_attrs' => ['class' => 'date-created toggleable', 'id' => 'th-date-created'],
                                 ];
 
-                                $_table_data[] = [
-                                     'name'     => 'Details',
-                                     'th_attrs' => ['class' => 'toggleable', 'id' => 'th-details'],
-                                 ];
+                                if (is_admin()) {
+                                    $_table_data[] = [
+                                        'name'     => 'Lead clicked',
+                                        'th_attrs' => ['class' => 'toggleable', 'id' => 'th-lead-clicked'],
+                                    ];
+                                }
+
+                                 $_table_data[] = [
+                                      'name'     => 'Details',
+                                      'th_attrs' => ['class' => 'toggleable', 'id' => 'th-details'],
+                                  ];
 
                                 foreach ($_table_data as $_t) {
                                     array_push($table_data, $_t);
@@ -365,14 +374,85 @@
         $(document).on('click', '.lead-phone-click', function(e) {
             e.preventDefault();
             const phone = $(this).data('phone');
+            const leadId = $(this).data('id');
             
             let cleanPhone = phone.toString().replace(/[^0-9+]/g, '');
             
             $('#call_opt_phone').text(phone);
-            $('#normal_call_link').attr('href', 'tel:' + cleanPhone);
-            $('#whatsapp_call_link').attr('href', 'https://api.whatsapp.com/send?phone=' + cleanPhone);
+            $('#normal_call_link').attr('href', 'tel:' + cleanPhone).data('id', leadId);
+            $('#whatsapp_call_link').attr('href', 'https://api.whatsapp.com/send?phone=' + cleanPhone).data('id', leadId);
             
             $('#lead_call_options_modal').modal('show');
+
+            if (leadId) {
+                $.post(admin_url + 'leads/track_click/' + leadId + '/1');
+            }
+        });
+
+        // Handle clicks inside call options modal (track click 2)
+        $(document).on('click', '#normal_call_link, #whatsapp_call_link', function() {
+            const leadId = $(this).data('id');
+            if (leadId) {
+                $.post(admin_url + 'leads/track_click/' + leadId + '/2');
+            }
+        });
+
+        // Handle single WhatsApp send button click
+        $(document).on('click', '.send-single-wp', function(e) {
+            e.preventDefault();
+            const btn = $(this);
+            const leadId = btn.data('id');
+            const name = btn.data('name');
+            const phone = btn.data('phone');
+            
+            // Define message template
+            const templateText = "Hello {name}, we tried to contact you regarding your loan request. Please let us know when you are available for a call.";
+            const message = templateText.replace(/{name}/g, name);
+            
+            // Copy to clipboard
+            navigator.clipboard.writeText(message).then(function() {
+                alert_float('info', 'Message text copied to clipboard!');
+            }, function(err) {
+                console.error('Could not copy text: ', err);
+            });
+            
+            // Send AJAX to log it
+            $.ajax({
+                url: admin_url + 'cold_wp/log_send',
+                type: 'POST',
+                data: {
+                    lead_id: leadId,
+                    phone_number: phone,
+                    message_text: message,
+                    ...(typeof(csrfData) !== 'undefined' ? { [csrfData.token_name]: csrfData.hash } : {})
+                },
+                success: function(response) {
+                    const res = JSON.parse(response);
+                    if (res.success) {
+                        // Change button appearance to grey/disabled
+                        btn.removeClass('btn-success')
+                           .addClass('btn-default')
+                           .css({
+                               'background-color': '#dcdcdc',
+                               'border-color': '#dcdcdc',
+                               'color': '#777'
+                           })
+                           .attr('title', 'sended')
+                           .prop('disabled', true)
+                           .html('<i class="fa fa-whatsapp"></i> WhatsApp');
+                    } else {
+                        alert_float('danger', res.message);
+                    }
+                },
+                error: function() {
+                    alert_float('danger', 'Failed to log message status on the server.');
+                }
+            });
+            
+            // Open WhatsApp Web/App
+            let cleanPhone = phone.toString().replace(/[^0-9]/g, '');
+            const waUrl = 'https://api.whatsapp.com/send?phone=' + cleanPhone + '&text=' + encodeURIComponent(message);
+            window.open(waUrl, '_blank');
         });
 
         // Listen to DataTables pre-XHR event to append the custom filter parameter

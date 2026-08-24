@@ -159,6 +159,8 @@ return App_table::find('leads')
             db_prefix() . 'leads.addedfrom as addedfrom',
             '(SELECT count(leadid) FROM ' . db_prefix() . 'clients WHERE ' . db_prefix() . 'clients.leadid=' . db_prefix() . 'leads.id) as is_converted',
             'zip',
+            'click_1',
+            'click_2',
         ]);
 
         $result = data_tables_init($aColumns, $sIndexColumn, $sTable, $join, $where, $additionalColumns);
@@ -166,13 +168,15 @@ return App_table::find('leads')
         $output  = $result['output'];
         $rResult = $result['rResult'];
 
+        $startIndex = (int)$this->ci->input->post('start') + 1;
+
         foreach ($rResult as $aRow) {
             $row = [];
 
             $row[] = '<div class="checkbox"><input type="checkbox" value="' . $aRow['id'] . '"><label></label></div>';
 
             $hrefAttr = 'href="' . admin_url('leads/index/' . $aRow['id']) . '" onclick="init_lead(' . $aRow['id'] . ');return false;"';
-            $row[]    = '<a ' . $hrefAttr . ' class="tw-font-medium">' . $aRow['id'] . '</a>';
+            $row[]    = '<a ' . $hrefAttr . ' class="tw-font-medium">' . $startIndex++ . '</a>';
 
             $nameRow = '<a ' . $hrefAttr . ' class="tw-font-medium">' . e($aRow['name']) . '</a>';
 
@@ -209,10 +213,11 @@ return App_table::find('leads')
 
             $row[] = ($aRow['email'] != '' ? '<a href="mailto:' . e($aRow['email']) . '">' . e($aRow['email']) . '</a>' : '');
 
-            $row[] = ($aRow['phonenumber'] != '' ? '<a href="#" class="lead-phone-click" data-phone="' . e($aRow['phonenumber']) . '">' . e($aRow['phonenumber']) . '</a>' : '');
+            $row[] = ($aRow['phonenumber'] != '' ? '<a href="#" class="lead-phone-click" data-id="' . $aRow['id'] . '" data-phone="' . e($aRow['phonenumber']) . '">' . e($aRow['phonenumber']) . '</a>' : '');
 
             $base_currency = get_base_currency();
-            $row[]         = '<span class="tw-font-medium">' . e(($aRow['lead_value'] != 0 ? app_format_money($aRow['lead_value'], $base_currency->id) : '')) . '</span>';
+            $lead_value    = $aRow['lead_value'] != 0 ? $aRow['lead_value'] : 60;
+            $row[]         = '<span class="tw-font-medium">' . e(app_format_money($lead_value, $base_currency->id)) . '</span>';
 
             $row[] .= render_tags($aRow['tags']);
 
@@ -272,8 +277,27 @@ return App_table::find('leads')
 
             $row[] = '<span data-toggle="tooltip" data-title="' . e(_dt($aRow['dateadded'])) . '" class="text-has-action is-date">' . e(time_ago($aRow['dateadded'])) . '</span>';
 
-            // Details Button
-            $row[] = '<button type="button" class="btn btn-info btn-xs" onclick="initLeadLoanDetails(' . $aRow['id'] . '); return false;"><i class="fa fa-edit"></i> Details</button>';
+            if (is_admin()) {
+                $light1_color = ($aRow['click_1'] == 1) ? '#25d366' : '#bbb';
+                $light2_color = ($aRow['click_2'] == 1) ? '#25d366' : '#bbb';
+                
+                $light1 = '<span style="display:inline-block; width:12px; height:12px; border-radius:50%; background-color:' . $light1_color . '; margin-right:5px;" title="Phone number clicked"></span> 1';
+                $light2 = '<span style="display:inline-block; width:12px; height:12px; border-radius:50%; background-color:' . $light2_color . '; margin-right:5px;" title="Popup action clicked"></span> 2';
+                
+                $row[] = '<div style="display:flex; align-items:center; gap:10px;">' . $light1 . $light2 . '</div>';
+            }
+
+            // Details Button & WhatsApp Button
+            $detailsBtn = '<button type="button" class="btn btn-info btn-xs mbot5" style="display:block; width:100%;" onclick="initLeadLoanDetails(' . $aRow['id'] . '); return false;"><i class="fa fa-edit"></i> Details</button>';
+            
+            $wasWpSent = total_rows('cold_wp_messages', ['lead_id' => $aRow['id']]) > 0;
+            if ($wasWpSent) {
+                $wpBtn = '<button type="button" class="btn btn-default btn-xs whatsapp-sent" style="display:block; width:100%; background-color:#dcdcdc; color:#777;" title="sended" disabled><i class="fa fa-whatsapp"></i> WhatsApp</button>';
+            } else {
+                $wpBtn = '<button type="button" class="btn btn-success btn-xs send-single-wp" style="display:block; width:100%; background-color:#25d366; border-color:#25d366; color:#fff;" data-id="' . $aRow['id'] . '" data-name="' . e($aRow['name']) . '" data-phone="' . e($aRow['phonenumber']) . '"><i class="fa fa-whatsapp"></i> WhatsApp</button>';
+            }
+            
+            $row[] = $detailsBtn . $wpBtn;
 
             // Custom fields add values
             foreach ($customFieldsColumns as $customFieldColumn) {
