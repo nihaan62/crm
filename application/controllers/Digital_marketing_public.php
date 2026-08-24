@@ -41,11 +41,17 @@ class Digital_marketing_public extends App_Controller
             return;
         }
 
-        $data['form_type']  = 'loans';
-        $data['page_title'] = 'Loan Enquiry Form';
-        $data['page_subtitle'] = 'Fill in your details and get the best loan offers tailored for you.';
-        $data['success']    = $this->session->flashdata('dm_success');
-        $data['error']      = $this->session->flashdata('dm_error');
+        $data['form_type']    = 'loans';
+        $data['page_title']   = 'Loan Enquiry Form';
+        $data['page_subtitle']= 'Fill in your details and get the best loan offers tailored for you.';
+        $data['success']      = $this->session->flashdata('dm_success');
+        $data['error']        = $this->session->flashdata('dm_error');
+        $data['crm_name']     = get_option('companyname');
+        $data['crm_logo']     = get_option('company_logo') ? base_url('uploads/company/' . get_option('company_logo')) : '';
+        $data['crm_logo_dark']= get_option('company_logo_dark') ? base_url('uploads/company/' . get_option('company_logo_dark')) : '';
+        $data['crm_email']    = get_option('email');
+        $data['crm_phone']    = get_option('phonenumber');
+        $data['crm_website']  = get_option('website');
 
         $this->load->view('digital_marketing_public/loans_form', $data);
     }
@@ -60,9 +66,15 @@ class Digital_marketing_public extends App_Controller
             return;
         }
 
-        $data['form_type']  = 'it';
-        $data['page_title'] = 'IT Solutions Enquiry Form';
-        $data['page_subtitle'] = 'Tell us about your IT needs and we will craft the perfect solution for your business.';
+        $data['form_type']    = 'it';
+        $data['page_title']   = 'IT Solutions Enquiry Form';
+        $data['page_subtitle']= 'Tell us about your IT needs and we will craft the perfect solution for your business.';
+        $data['crm_name']     = get_option('companyname');
+        $data['crm_logo']     = get_option('company_logo') ? base_url('uploads/company/' . get_option('company_logo')) : '';
+        $data['crm_logo_dark']= get_option('company_logo_dark') ? base_url('uploads/company/' . get_option('company_logo_dark')) : '';
+        $data['crm_email']    = get_option('email');
+        $data['crm_phone']    = get_option('phonenumber');
+        $data['crm_website']  = get_option('website');
         $data['success']    = $this->session->flashdata('dm_success');
         $data['error']      = $this->session->flashdata('dm_error');
 

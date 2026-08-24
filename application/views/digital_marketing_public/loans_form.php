@@ -430,8 +430,12 @@
 <!-- ─── NAVBAR ─── -->
 <nav class="navbar">
     <div class="logo">
-        <div class="badge-dot"></div>
-        FinServ<span style="color:var(--gold2);">Pro</span>
+        <?php if (!empty($crm_logo)): ?>
+            <img src="<?= e($crm_logo); ?>" alt="<?= e($crm_name); ?>" style="max-height:36px; max-width:160px; object-fit:contain;">
+        <?php else: ?>
+            <div class="badge-dot"></div>
+            <span><?= e($crm_name ?: 'FinServPro'); ?></span>
+        <?php endif; ?>
     </div>
     <div class="tag">🔒 SSL Secured</div>
 </nav>
@@ -440,7 +444,7 @@
 <section class="hero">
     <div class="hero-grid">
         <div class="hero-left">
-            <div class="hero-chip"><span></span> Trusted by 50,000+ Customers</div>
+            <div class="hero-chip"><span></span> Trusted Loan Experts</div>
             <h1>Smart Loans,<br><em>Faster Approvals.</em><br>Better Rates.</h1>
             <p class="hero-sub">Get personalized loan solutions with competitive interest rates, minimal documentation, and quick disbursals. Apply in minutes — our experts do the rest.</p>
             <div class="hero-badges">
@@ -449,6 +453,17 @@
                 <div class="hero-badge"><span class="icon">🏦</span> 15+ Partner Banks</div>
                 <div class="hero-badge"><span class="icon">🔒</span> Data Secured</div>
             </div>
+            <?php if (!empty($crm_phone) || !empty($crm_email)): ?>
+            <div style="margin-top:28px; padding-top:24px; border-top:1px solid rgba(255,255,255,0.1);">
+                <p style="font-size:12px; text-transform:uppercase; letter-spacing:1px; color:rgba(255,255,255,0.4); margin-bottom:10px; font-weight:600;">Contact Us Directly</p>
+                <?php if (!empty($crm_phone)): ?>
+                <div class="hero-badge" style="margin-bottom:8px;"><span class="icon">📞</span> <?= e($crm_phone); ?></div>
+                <?php endif; ?>
+                <?php if (!empty($crm_email)): ?>
+                <div class="hero-badge"><span class="icon">✉️</span> <?= e($crm_email); ?></div>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
         </div>
 
         <!-- FORM CARD -->
@@ -581,8 +596,10 @@
 
 <!-- ─── FOOTER ─── -->
 <footer class="footer">
-    &copy; <?= date('Y'); ?> FinServPro &mdash; All Rights Reserved &nbsp;|&nbsp;
-    <a href="#">Privacy Policy</a> &nbsp;|&nbsp; <a href="#">Terms of Use</a>
+    &copy; <?= date('Y'); ?> <?= e($crm_name ?: 'FinServPro'); ?> &mdash; All Rights Reserved
+    <?php if (!empty($crm_email)): ?> &nbsp;|&nbsp; <a href="mailto:<?= e($crm_email); ?>"><?= e($crm_email); ?></a><?php endif; ?>
+    <?php if (!empty($crm_phone)): ?> &nbsp;|&nbsp; <?= e($crm_phone); ?><?php endif; ?>
+    <?php if (!empty($crm_website)): ?> &nbsp;|&nbsp; <a href="<?= e($crm_website); ?>" target="_blank"><?= e($crm_website); ?></a><?php endif; ?>
 </footer>
 
 <script>

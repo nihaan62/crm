@@ -218,8 +218,11 @@ return App_table::find('leads')
             $row[] = ($aRow['phonenumber'] != '' ? '<a href="#" class="lead-phone-click" data-id="' . $aRow['id'] . '" data-phone="' . e($aRow['phonenumber']) . '">' . e($aRow['phonenumber']) . '</a>' : '');
 
             $base_currency = get_base_currency();
-            $lead_value    = $aRow['lead_value'] != 0 ? $aRow['lead_value'] : 60;
-            $row[]         = '<span class="tw-font-medium">' . e(app_format_money($lead_value, $base_currency->id)) . '</span>';
+            if (!empty($aRow['lead_value']) && $aRow['lead_value'] > 0) {
+                $row[] = '<span class="tw-font-medium">' . e(app_format_money($aRow['lead_value'], $base_currency->id)) . '</span>';
+            } else {
+                $row[] = '<span class="text-muted">—</span>';
+            }
 
             $row[] .= render_tags($aRow['tags']);
 

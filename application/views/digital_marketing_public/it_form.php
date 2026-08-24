@@ -514,8 +514,14 @@
 <!-- ─── NAVBAR ─── -->
 <nav class="navbar">
     <div class="logo">
-        <div class="logo-icon">⚡</div>
-        <span>TEHub<span style="color:var(--cyan);">Tech</span></span>
+        <?php if (!empty($crm_logo)): ?>
+            <img src="<?= e($crm_logo); ?>" alt="<?= e($crm_name); ?>" style="max-height:36px; max-width:160px; object-fit:contain; filter:brightness(0) invert(1);">
+        <?php elseif (!empty($crm_logo_dark)): ?>
+            <img src="<?= e($crm_logo_dark); ?>" alt="<?= e($crm_name); ?>" style="max-height:36px; max-width:160px; object-fit:contain;">
+        <?php else: ?>
+            <div class="logo-icon">⚡</div>
+            <span><?= e($crm_name ?: 'TEHubTech'); ?></span>
+        <?php endif; ?>
     </div>
     <div class="nav-pill">✦ Free Consultation</div>
 </nav>
@@ -564,6 +570,22 @@
                     <div class="lbl">Years Experience</div>
                 </div>
             </div>
+            <?php if (!empty($crm_phone) || !empty($crm_email)): ?>
+            <div style="margin-top:28px; padding-top:24px; border-top:1px solid rgba(255,255,255,0.08);">
+                <p style="font-size:11px; text-transform:uppercase; letter-spacing:1.5px; color:var(--gray400); margin-bottom:10px; font-weight:600;">Get in Touch</p>
+                <div style="display:flex; flex-wrap:wrap; gap:10px;">
+                    <?php if (!empty($crm_phone)): ?>
+                    <a href="tel:<?= e($crm_phone); ?>" class="sc" style="text-decoration:none;">📞 <?= e($crm_phone); ?></a>
+                    <?php endif; ?>
+                    <?php if (!empty($crm_email)): ?>
+                    <a href="mailto:<?= e($crm_email); ?>" class="sc" style="text-decoration:none;">✉️ <?= e($crm_email); ?></a>
+                    <?php endif; ?>
+                    <?php if (!empty($crm_website)): ?>
+                    <a href="<?= e($crm_website); ?>" target="_blank" class="sc" style="text-decoration:none;">🌐 <?= e($crm_website); ?></a>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <?php endif; ?>
         </div>
 
         <!-- Form Card -->
@@ -706,8 +728,10 @@
 
 <!-- ─── FOOTER ─── -->
 <footer class="footer">
-    &copy; <?= date('Y'); ?> TEHubTech Solutions &mdash; All Rights Reserved &nbsp;|&nbsp;
-    <a href="#">Privacy Policy</a> &nbsp;|&nbsp; <a href="#">Terms of Service</a>
+    &copy; <?= date('Y'); ?> <?= e($crm_name ?: 'TEHubTech Solutions'); ?> &mdash; All Rights Reserved
+    <?php if (!empty($crm_email)): ?> &nbsp;|&nbsp; <a href="mailto:<?= e($crm_email); ?>"><?= e($crm_email); ?></a><?php endif; ?>
+    <?php if (!empty($crm_phone)): ?> &nbsp;|&nbsp; <?= e($crm_phone); ?><?php endif; ?>
+    <?php if (!empty($crm_website)): ?> &nbsp;|&nbsp; <a href="<?= e($crm_website); ?>" target="_blank"><?= e($crm_website); ?></a><?php endif; ?>
 </footer>
 
 <script>
