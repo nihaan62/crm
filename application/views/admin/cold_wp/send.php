@@ -349,13 +349,6 @@ $(function() {
         // Replace placeholder
         const message = templateText.replace(/{name}/g, name);
 
-        // Copy text to clipboard
-        navigator.clipboard.writeText(message).then(function() {
-            alert_float('info', 'Message text copied to clipboard! You can paste (Ctrl+V) it in WhatsApp.');
-        }, function(err) {
-            console.error('Could not copy text: ', err);
-        });
-
         // Prepare Form Data for background logging
         const form = $('#campaign_form')[0];
         const formData = new FormData(form);
@@ -398,12 +391,6 @@ $(function() {
             }
         });
 
-        // Clean phone number (remove non-numeric chars except leading plus)
-        let cleanPhone = phone.toString().replace(/[^0-9]/g, '');
-        
-        // Open WhatsApp Web/App in new tab
-        const waUrl = 'https://api.whatsapp.com/send?phone=' + cleanPhone + '&text=' + encodeURIComponent(message);
-        window.open(waUrl, '_blank');
     };
 
     function updateStats() {

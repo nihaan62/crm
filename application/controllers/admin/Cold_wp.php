@@ -105,6 +105,60 @@ class Cold_wp extends AdminController
             $image_path = $this->input->post('image_path');
         }
 
+        // Clean phone number (remove non-digits). Prepends 91 if it is 10 digits
+        $clean_phone = preg_replace('/[^0-9]/', '', $phone_number);
+        if (strlen($clean_phone) === 10) {
+            $clean_phone = '91' . $clean_phone;
+        }
+
+        // Call the WhatsApp API to dispatch the message programmatically
+        $url = 'https://2fa.tehub.in/api/whatsapp.php';
+        $api_key = 'b0b306dc4bf090c19f85c584906a967c';
+
+        $payload = [
+            'to' => $clean_phone,
+            'message' => $message_text,
+            'type' => 'general'
+        ];
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Authorization: Bearer ' . $api_key,
+            'Content-Type: application/json'
+        ]);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+
+        $api_response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        $res_decoded = json_decode($api_response, true);
+        
+        $api_success = false;
+        $error_message = 'Failed to connect to WhatsApp API gateway.';
+
+        if ($http_code === 200 && isset($res_decoded['success']) && $res_decoded['success'] === true) {
+            $api_success = true;
+        } else {
+            if (isset($res_decoded['error'])) {
+                $error_message = $res_decoded['error'];
+            } elseif (isset($res_decoded['message'])) {
+                $error_message = $res_decoded['message'];
+            }
+        }
+
+        if (!$api_success) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'WhatsApp API Error: ' . $error_message
+            ]);
+            return;
+        }
+
         $changed_by = get_staff_full_name(get_staff_user_id());
 
         $insert_data = [

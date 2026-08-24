@@ -459,13 +459,6 @@
             // Hide the modal
             $('#whatsapp_script_select_modal').modal('hide');
             
-            // Copy to clipboard
-            navigator.clipboard.writeText(message).then(function() {
-                alert_float('info', 'Message text copied to clipboard!');
-            }, function(err) {
-                console.error('Could not copy text: ', err);
-            });
-            
             // Send AJAX to log it
             $.ajax({
                 url: admin_url + 'cold_wp/log_send',
@@ -499,11 +492,6 @@
                 }
             });
             
-            // Open WhatsApp Web/App
-            let cleanPhone = phone.toString().replace(/[^0-9]/g, '');
-            const waUrl = 'https://api.whatsapp.com/send?phone=' + cleanPhone + '&text=' + encodeURIComponent(message);
-            window.open(waUrl, '_blank');
-
             // Reset active button
             activeWpButton = null;
         });
