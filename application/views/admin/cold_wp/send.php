@@ -20,6 +20,28 @@
                         <!-- Form for template and image -->
                         <form id="campaign_form" enctype="multipart/form-data">
                             <div class="form-group">
+                                <label for="template_select" class="control-label">Load Saved Template</label>
+                                <div class="input-group">
+                                    <select id="template_select" class="selectpicker" data-width="100%" data-none-selected-text="Select a saved template..." data-live-search="true">
+                                        <option value="">-- Select Template --</option>
+                                        <?php foreach ($templates as $tmpl) { ?>
+                                            <option value="<?= $tmpl['id']; ?>" 
+                                                    data-message="<?= e($tmpl['message_text']); ?>" 
+                                                    data-image="<?= $tmpl['image_path'] ? base_url($tmpl['image_path']) : ''; ?>"
+                                                    data-raw-image="<?= $tmpl['image_path']; ?>">
+                                                <?= e($tmpl['title']); ?>
+                                            </option>
+                                        <?php } ?>
+                                    </select>
+                                    <span class="input-group-btn">
+                                        <button type="button" class="btn btn-danger" id="delete_template_btn" title="Delete selected template" style="display: none;">
+                                            <i class="fa fa-trash"></i>
+                                        </button>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
                                 <label for="message_template" class="control-label">Message Template</label>
                                 <textarea id="message_template" name="message_text" class="form-control" rows="8" placeholder="Hello {name}, we have an exciting loan offer for you!"></textarea>
                                 <span class="text-muted"><i class="fa fa-info-circle"></i> Use placeholder <code>{name}</code> to personalize the message automatically.</span>
@@ -29,6 +51,13 @@
                                 <label for="media_image" class="control-label">Campaign Media Image (Optional)</label>
                                 <input type="file" id="media_image" name="image" class="form-control" accept="image/*">
                                 <span class="text-muted"><i class="fa fa-info-circle"></i> Since WhatsApp API does not support direct image pre-attachment via links, uploaded images will be shown below for easy copy-pasting (Ctrl+V) into WhatsApp.</span>
+                            </div>
+
+                            <!-- Save Template Button -->
+                            <div class="form-group tw-mt-4">
+                                <button type="button" class="btn btn-info btn-block" id="save_template_btn">
+                                    <i class="fa fa-save"></i> Save Current Message as Template
+                                </button>
                             </div>
 
                             <!-- Image Preview Area -->
@@ -101,6 +130,114 @@
 <script>
 $(function() {
     let uploadedImagePath = null;
+
+    // Template selection change handler
+    $('#template_select').on('change', function() {
+        const selectedOpt = $(this).find('option:selected');
+        const val = $(this).val();
+
+        if (val) {
+            const message = selectedOpt.data('message');
+            const imageUrl = selectedOpt.data('image');
+            const rawImage = selectedOpt.data('raw-image');
+
+            $('#message_template').val(message);
+
+            if (imageUrl) {
+                $('#image_preview').attr('src', imageUrl);
+                $('#image_preview_container').show();
+                uploadedImagePath = rawImage; // Set for campaign send logging
+            } else {
+                $('#image_preview_container').hide();
+                uploadedImagePath = null;
+            }
+            $('#delete_template_btn').show();
+        } else {
+            $('#message_template').val('');
+            $('#image_preview_container').hide();
+            uploadedImagePath = null;
+            $('#delete_template_btn').hide();
+        }
+    });
+
+    // Save template click handler
+    $('#save_template_btn').on('click', function() {
+        const messageText = $('#message_template').val().trim();
+        if (messageText === '') {
+            alert_float('warning', 'Please enter a message template text first.');
+            return;
+        }
+
+        const title = prompt("Enter template title/name:");
+        if (!title) return; // Cancelled
+
+        const form = $('#campaign_form')[0];
+        const formData = new FormData(form);
+        formData.append('title', title);
+
+        if (typeof(csrfData) !== 'undefined') {
+            formData.append(csrfData.token_name, csrfData.hash);
+        }
+
+        $.ajax({
+            url: admin_url + 'cold_wp/save_template',
+            type: 'POST',
+            data: formData,
+            contentType: false,
+            processData: false,
+            success: function(response) {
+                const res = JSON.parse(response);
+                if (res.success) {
+                    alert_float('success', res.message);
+                    
+                    // Add new option to dropdown
+                    const option = $('<option></option>')
+                        .val(res.template.id)
+                        .text(res.template.title)
+                        .attr('data-message', res.template.message_text)
+                        .attr('data-image', res.template.image_path || '')
+                        .attr('data-raw-image', res.template.raw_image_path || '');
+                    
+                    $('#template_select').append(option);
+                    $('#template_select').val(res.template.id).trigger('change');
+                    $('#template_select').selectpicker('refresh');
+                } else {
+                    alert_float('danger', res.message);
+                }
+            },
+            error: function() {
+                alert_float('danger', 'Failed to save template.');
+            }
+        });
+    });
+
+    // Delete template click handler
+    $('#delete_template_btn').on('click', function() {
+        const val = $('#template_select').val();
+        if (!val) return;
+
+        if (confirm("Are you sure you want to delete this template?")) {
+            $.ajax({
+                url: admin_url + 'cold_wp/delete_template/' + val,
+                type: 'POST',
+                data: (typeof(csrfData) !== 'undefined' ? { [csrfData.token_name]: csrfData.hash } : {}),
+                success: function(response) {
+                    const res = JSON.parse(response);
+                    if (res.success) {
+                        alert_float('success', res.message);
+                        $('#template_select').find('option[value="' + val + '"]').remove();
+                        $('#template_select').val('').trigger('change');
+                        $('#template_select').selectpicker('refresh');
+                    } else {
+                        alert_float('danger', res.message);
+                    }
+                },
+                error: function() {
+                    alert_float('danger', 'Failed to delete template.');
+                }
+            });
+        }
+    });
 
     // Handle Image Preview
     $('#media_image').on('change', function() {

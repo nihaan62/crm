@@ -24,6 +24,16 @@ class Cold_wp extends AdminController
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8;");
         }
 
+        if (!$this->db->table_exists($db_prefix . 'cold_wp_templates')) {
+            $this->db->query("CREATE TABLE IF NOT EXISTS `{$db_prefix}cold_wp_templates` (
+                `id` INT AUTO_INCREMENT PRIMARY KEY,
+                `title` VARCHAR(255) NOT NULL,
+                `message_text` TEXT NOT NULL,
+                `image_path` VARCHAR(255) DEFAULT NULL,
+                `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8;");
+        }
+
         if (!$this->db->field_exists('batch_name', $db_prefix . 'leads')) {
             $this->db->query("ALTER TABLE `{$db_prefix}leads` ADD COLUMN `batch_name` VARCHAR(191) DEFAULT NULL");
         }
@@ -54,8 +64,11 @@ class Cold_wp extends AdminController
             $leads = $this->db->get(db_prefix() . 'leads')->result_array();
         }
 
+        $templates = $this->db->order_by('title', 'asc')->get(db_prefix() . 'cold_wp_templates')->result_array();
+
         $data = [
             'leads' => $leads,
+            'templates' => $templates,
             'title' => 'Send Cold WhatsApp Messages'
         ];
 
@@ -147,5 +160,71 @@ class Cold_wp extends AdminController
 
         set_alert('success', 'Log record deleted successfully.');
         redirect(admin_url('cold_wp/logs'));
+    }
+
+    public function save_template()
+    {
+        if (!staff_can('create', 'cold_wp_messages')) {
+            echo json_encode(['success' => false, 'message' => 'Access denied.']);
+            return;
+        }
+
+        $title = $this->input->post('title');
+        $message_text = $this->input->post('message_text');
+        $image_path = null;
+
+        if (empty($title)) {
+            echo json_encode(['success' => false, 'message' => 'Template Title is required.']);
+            return;
+        }
+
+        if (isset($_FILES['image']) && !empty($_FILES['image']['name'])) {
+            $path = FCPATH . 'uploads/cold_wp_images/';
+            if (!is_dir($path)) {
+                mkdir($path, 0777, true);
+            }
+
+            $ext = strtolower(pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION));
+            if (in_array($ext, ['jpg', 'jpeg', 'png', 'gif'])) {
+                $new_filename = uniqid() . '.' . $ext;
+                if (move_uploaded_file($_FILES['image']['tmp_name'], $path . $new_filename)) {
+                    $image_path = 'uploads/cold_wp_images/' . $new_filename;
+                }
+            }
+        }
+
+        $insert_data = [
+            'title' => $title,
+            'message_text' => $message_text,
+            'image_path' => $image_path
+        ];
+
+        $this->db->insert(db_prefix() . 'cold_wp_templates', $insert_data);
+        $insert_id = $this->db->insert_id();
+
+        echo json_encode([
+            'success' => true,
+            'message' => 'Template saved successfully.',
+            'template' => [
+                'id' => $insert_id,
+                'title' => $title,
+                'message_text' => $message_text,
+                'image_path' => $image_path ? base_url($image_path) : null,
+                'raw_image_path' => $image_path
+            ]
+        ]);
+    }
+
+    public function delete_template($id)
+    {
+        if (!staff_can('delete', 'cold_wp_messages')) {
+            echo json_encode(['success' => false, 'message' => 'Access denied.']);
+            return;
+        }
+
+        $this->db->where('id', (int)$id);
+        $this->db->delete(db_prefix() . 'cold_wp_templates');
+
+        echo json_encode(['success' => true, 'message' => 'Template deleted successfully.']);
     }
 }
