@@ -225,6 +225,22 @@ function app_init_admin_sidebar_menu_items()
         'icon'     => 'fa-regular fa-calendar-times',
     ]);
 
+    if (is_admin()) {
+        $CI->app_menu->add_sidebar_menu_item('loans-ads-lead', [
+            'name'     => 'Loans ADS lead',
+            'href'     => admin_url('digital_marketing/loans'),
+            'position' => 49,
+            'icon'     => 'fa fa-dollar',
+        ]);
+
+        $CI->app_menu->add_sidebar_menu_item('it-lds-lead', [
+            'name'     => 'IT LDS lead',
+            'href'     => admin_url('digital_marketing/it'),
+            'position' => 50,
+            'icon'     => 'fa fa-code',
+        ]);
+    }
+
     if ((staff_can('view',  'estimate_request') || staff_can('view_own',  'estimate_request'))) {
         $CI->app_menu->add_sidebar_menu_item('estimate_request', [
             'name'     => _l('estimate_request'),
