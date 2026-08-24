@@ -161,6 +161,8 @@ return App_table::find('leads')
             'zip',
             'click_1',
             'click_2',
+            'click_1_time',
+            'click_2_time',
         ]);
 
         $result = data_tables_init($aColumns, $sIndexColumn, $sTable, $join, $where, $additionalColumns);
@@ -281,10 +283,20 @@ return App_table::find('leads')
                 $light1_color = ($aRow['click_1'] == 1) ? '#25d366' : '#bbb';
                 $light2_color = ($aRow['click_2'] == 1) ? '#25d366' : '#bbb';
                 
-                $light1 = '<span style="display:inline-block; width:12px; height:12px; border-radius:50%; background-color:' . $light1_color . '; margin-right:5px;" title="Phone number clicked"></span> 1';
-                $light2 = '<span style="display:inline-block; width:12px; height:12px; border-radius:50%; background-color:' . $light2_color . '; margin-right:5px;" title="Popup action clicked"></span> 2';
+                $light1_time = '';
+                if ($aRow['click_1'] == 1 && !empty($aRow['click_1_time'])) {
+                    $light1_time = '<br><span style="font-size:10px; color:#777; display:block; margin-top:2px;" data-toggle="tooltip" data-title="' . e(_dt($aRow['click_1_time'])) . '">' . e(time_ago($aRow['click_1_time'])) . '</span>';
+                }
                 
-                $row[] = '<div style="display:flex; align-items:center; gap:10px;">' . $light1 . $light2 . '</div>';
+                $light2_time = '';
+                if ($aRow['click_2'] == 1 && !empty($aRow['click_2_time'])) {
+                    $light2_time = '<br><span style="font-size:10px; color:#777; display:block; margin-top:2px;" data-toggle="tooltip" data-title="' . e(_dt($aRow['click_2_time'])) . '">' . e(time_ago($aRow['click_2_time'])) . '</span>';
+                }
+
+                $light1 = '<div style="text-align:center; min-width:40px;"><span style="display:inline-block; width:12px; height:12px; border-radius:50%; background-color:' . $light1_color . ';" title="Phone number clicked"></span><span style="font-size:11px; margin-left:3px; font-weight:bold; vertical-align:middle;">1</span>' . $light1_time . '</div>';
+                $light2 = '<div style="text-align:center; min-width:40px;"><span style="display:inline-block; width:12px; height:12px; border-radius:50%; background-color:' . $light2_color . ';" title="Popup action clicked"></span><span style="font-size:11px; margin-left:3px; font-weight:bold; vertical-align:middle;">2</span>' . $light2_time . '</div>';
+                
+                $row[] = '<div style="display:flex; align-items:flex-start; gap:15px;">' . $light1 . $light2 . '</div>';
             }
 
             // Details Button & WhatsApp Button

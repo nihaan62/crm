@@ -125,24 +125,48 @@
                                 <a href="<?= admin_url('leads'); ?>" class="btn btn-primary" style="margin-top: 10px;">Go to Leads Page</a>
                             </div>
                         <?php } else { ?>
-                            <!-- Filter by Lead Status -->
-                            <div class="form-group tw-mb-4" style="max-width: 300px;">
-                                <label for="lead_status_filter" class="control-label">Filter by Lead Status</label>
-                                <select id="lead_status_filter" class="form-control selectpicker" data-width="100%" data-none-selected-text="All Statuses">
-                                    <option value="">All Statuses</option>
-                                    <?php 
-                                    $statuses = [];
-                                    foreach ($leads as $lead) {
-                                        if (!empty($lead['status_name']) && !in_array($lead['status_name'], $statuses)) {
-                                            $statuses[] = $lead['status_name'];
-                                        }
-                                    }
-                                    sort($statuses);
-                                    foreach ($statuses as $status) {
-                                        echo '<option value="' . e($status) . '">' . e($status) . '</option>';
-                                    }
-                                    ?>
-                                </select>
+                            <!-- Filter Queue -->
+                            <div class="row tw-mb-4">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="lead_status_filter" class="control-label">Filter by Lead Status</label>
+                                        <select id="lead_status_filter" class="form-control selectpicker" data-width="100%" data-none-selected-text="All Statuses">
+                                            <option value="">All Statuses</option>
+                                            <?php 
+                                            $statuses = [];
+                                            foreach ($leads as $lead) {
+                                                if (!empty($lead['status_name']) && !in_array($lead['status_name'], $statuses)) {
+                                                    $statuses[] = $lead['status_name'];
+                                                }
+                                            }
+                                            sort($statuses);
+                                            foreach ($statuses as $status) {
+                                                echo '<option value="' . e($status) . '">' . e($status) . '</option>';
+                                            }
+                                            ?>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="batch_name_filter" class="control-label">Filter by Batch Name</label>
+                                        <select id="batch_name_filter" class="form-control selectpicker" data-width="100%" data-none-selected-text="All Batches">
+                                            <option value="">All Batches</option>
+                                            <?php 
+                                            $batches = [];
+                                            foreach ($leads as $lead) {
+                                                if (!empty($lead['batch_name']) && !in_array($lead['batch_name'], $batches)) {
+                                                    $batches[] = $lead['batch_name'];
+                                                }
+                                            }
+                                            sort($batches);
+                                            foreach ($batches as $batch) {
+                                                echo '<option value="' . e($batch) . '">' . e($batch) . '</option>';
+                                            }
+                                            ?>
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
@@ -158,7 +182,7 @@
                                     </thead>
                                     <tbody>
                                         <?php foreach ($leads as $lead) { ?>
-                                            <tr id="lead_row_<?= $lead['id']; ?>" data-id="<?= $lead['id']; ?>" data-name="<?= e($lead['name']); ?>" data-company="<?= e($lead['company']); ?>" data-lead-status="<?= e($lead['status_name']); ?>" data-phone="<?= e($lead['phonenumber']); ?>">
+                                            <tr id="lead_row_<?= $lead['id']; ?>" data-id="<?= $lead['id']; ?>" data-name="<?= e($lead['name']); ?>" data-company="<?= e($lead['company']); ?>" data-lead-status="<?= e($lead['status_name']); ?>" data-batch-name="<?= e($lead['batch_name']); ?>" data-phone="<?= e($lead['phonenumber']); ?>">
                                                 <td class="bold"><?= e($lead['name'] == '/' || empty($lead['name']) ? ($lead['company'] ? $lead['company'] : '/') : $lead['name']); ?></td>
                                                 <td><?= e($lead['phonenumber']); ?></td>
                                                 <td class="lead-status-td"><span class="label label-info"><?= e($lead['status_name']); ?></span></td>
@@ -554,16 +578,31 @@ $(function() {
         activeCampaignLead = null;
     });
 
-    // Handle lead status filter
-    $(document).on('change', '#lead_status_filter', function() {
-        const val = $(this).val();
-        if (val) {
-            $('tr[id^="lead_row_"]').hide();
-            $('tr[data-lead-status="' + val + '"]').show();
-        } else {
-            $('tr[id^="lead_row_"]').show();
-        }
+    function filterCampaignQueue() {
+        const selectedStatus = $('#lead_status_filter').val();
+        const selectedBatch = $('#batch_name_filter').val();
+
+        $('tr[id^="lead_row_"]').each(function() {
+            const row = $(this);
+            const rowStatus = row.data('lead-status');
+            const rowBatch = row.data('batch-name');
+
+            let matchStatus = !selectedStatus || rowStatus === selectedStatus;
+            let matchBatch = !selectedBatch || rowBatch === selectedBatch;
+
+            if (matchStatus && matchBatch) {
+                row.show();
+            } else {
+                row.hide();
+            }
+        });
+
         updateStats();
+    }
+
+    // Handle lead status and batch filters
+    $(document).on('change', '#lead_status_filter, #batch_name_filter', function() {
+        filterCampaignQueue();
     });
 
     function updateStats() {

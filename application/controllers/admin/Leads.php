@@ -27,6 +27,12 @@ class Leads extends AdminController
         if (!$this->db->field_exists('click_2', $db_prefix . 'leads')) {
             $this->db->query("ALTER TABLE `{$db_prefix}leads` ADD COLUMN `click_2` INT DEFAULT 0");
         }
+        if (!$this->db->field_exists('click_1_time', $db_prefix . 'leads')) {
+            $this->db->query("ALTER TABLE `{$db_prefix}leads` ADD COLUMN `click_1_time` DATETIME DEFAULT NULL");
+        }
+        if (!$this->db->field_exists('click_2_time', $db_prefix . 'leads')) {
+            $this->db->query("ALTER TABLE `{$db_prefix}leads` ADD COLUMN `click_2_time` DATETIME DEFAULT NULL");
+        }
     }
 
     /* List all leads */
@@ -1260,10 +1266,10 @@ class Leads extends AdminController
 
         if ($type === 1) {
             $this->db->where('id', $lead_id);
-            $this->db->update(db_prefix() . 'leads', ['click_1' => 1]);
+            $this->db->update(db_prefix() . 'leads', ['click_1' => 1, 'click_1_time' => date('Y-m-d H:i:s')]);
         } elseif ($type === 2) {
             $this->db->where('id', $lead_id);
-            $this->db->update(db_prefix() . 'leads', ['click_2' => 1]);
+            $this->db->update(db_prefix() . 'leads', ['click_2' => 1, 'click_2_time' => date('Y-m-d H:i:s')]);
         }
 
         echo json_encode(['success' => true]);
