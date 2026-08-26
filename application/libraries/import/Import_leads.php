@@ -19,7 +19,7 @@ class Import_leads extends App_import
 
     public function __construct()
     {
-        $this->notImportableFields = hooks()->apply_filters('not_importable_leads_fields', ['id', 'assigned', 'dateadded', 'last_status_change', 'addedfrom', 'leadorder', 'date_converted', 'lost', 'junk', 'is_imported_from_email_integration', 'email_integration_uid', 'is_public', 'dateassigned', 'client_id', 'lastcontact', 'last_lead_status', 'from_form_id', 'default_language', 'hash']);
+        $this->notImportableFields = hooks()->apply_filters('not_importable_leads_fields', ['id', 'assigned', 'dateadded', 'last_status_change', 'addedfrom', 'leadorder', 'date_converted', 'lost', 'junk', 'is_imported_from_email_integration', 'email_integration_uid', 'is_public', 'dateassigned', 'client_id', 'lastcontact', 'last_lead_status', 'from_form_id', 'default_language', 'hash', 'click_1', 'click_2', 'click_1_time', 'click_2_time']);
 
         $uniqueValidationFields = json_decode(get_option('lead_unique_validation'));
 
@@ -58,6 +58,33 @@ class Import_leads extends App_import
         $customFields        = $this->getCustomFields();
         $totalDatabaseFields = count($databaseFields);
 
+        // Common shorthand / alias column names → actual DB field names
+        $fieldAliases = [
+            'number'        => 'phonenumber',
+            'phone'         => 'phonenumber',
+            'phone number'  => 'phonenumber',
+            'mobile'        => 'phonenumber',
+            'mobile number' => 'phonenumber',
+            'contact'       => 'phonenumber',
+            'contact number'=> 'phonenumber',
+            'business'      => 'company',
+            'company name'  => 'company',
+            'organisation'  => 'company',
+            'organization'  => 'company',
+            'full name'     => 'name',
+            'client name'   => 'name',
+            'lead name'     => 'name',
+            'customer name' => 'name',
+            'mail'          => 'email',
+            'email address' => 'email',
+            'e-mail'        => 'email',
+            'website url'   => 'website',
+            'web'           => 'website',
+            'section'       => 'batch_name',
+            'batch'         => 'batch_name',
+            'group'         => 'batch_name',
+        ];
+
         $colMapping = [];
         $headers = $this->getHeaders();
         if (!empty($headers)) {
@@ -82,6 +109,15 @@ class Import_leads extends App_import
                             $matched = true;
                             break;
                         }
+                    }
+                }
+
+                // Alias fallback: map common shorthand names to DB fields
+                if (!$matched && isset($fieldAliases[$header])) {
+                    $targetField = $fieldAliases[$header];
+                    if (in_array($targetField, $databaseFields)) {
+                        $colMapping[$index] = ['type' => 'db', 'field' => $targetField];
+                        $matched = true;
                     }
                 }
             }
