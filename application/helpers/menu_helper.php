@@ -239,6 +239,13 @@ function app_init_admin_sidebar_menu_items()
             'position' => 50,
             'icon'     => 'fa fa-code',
         ]);
+
+        $CI->app_menu->add_sidebar_menu_item('ads-wp-leads', [
+            'name'     => 'Ads WhatsApp Leads',
+            'href'     => admin_url('ads_wp_leads'),
+            'position' => 51,
+            'icon'     => 'fa-brands fa-whatsapp',
+        ]);
     }
 
     if ((staff_can('view',  'estimate_request') || staff_can('view_own',  'estimate_request'))) {
