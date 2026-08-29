@@ -1,6 +1,16 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
 <?php init_head(); ?>
 <style>
+/* Hide hero banner when loaded dynamically in the Leads all category page */
+#excel-leads-content .ael-hero {
+    display: none;
+}
+#excel-leads-content .content-inner {
+    padding: 0 !important;
+}
+#excel-leads-content #wrapper {
+    margin: 0 !important;
+}
 /* ─── Root Tokens ──────────────────────────────────────────────── */
 :root {
     --ael-green-start : #107C41;
@@ -414,29 +424,56 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
+function initExcelTable() {
+    // Prevent double initialization
+    if ($.fn.DataTable.isDataTable('#aelTable')) {
+        return;
+    }
 
-    /* ── Live Search ── */
+    var table = $('#aelTable').DataTable({
+        "pageLength": 10,
+        "language": {
+            "emptyTable": "No leads found"
+        },
+        "dom": "rtip", // Custom search/info/pagination layout
+        "ordering": true,
+        "info": true,
+        "paging": true,
+        "columnDefs": [
+            { "orderable": false, "targets": 0 } // index column not orderable
+        ]
+    });
+
+    // Handle custom search input search
     var searchInput = document.getElementById('aelSearchInput');
     if (searchInput) {
-        searchInput.addEventListener('keyup', function () {
-            var filter = this.value.toLowerCase();
-            var rows   = document.querySelectorAll('#aelTable tbody tr');
-            var shown  = 0;
-            rows.forEach(function (row) {
-                var matches = row.textContent.toLowerCase().indexOf(filter) > -1;
-                row.style.display = matches ? '' : 'none';
-                if (matches) shown++;
-            });
+        // Remove previous listeners if any
+        var newSearchInput = searchInput.cloneNode(true);
+        searchInput.parentNode.replaceChild(newSearchInput, searchInput);
+        
+        newSearchInput.addEventListener('keyup', function () {
+            table.search(this.value).draw();
+            var info = table.page.info();
+            var metaText = document.querySelector('.ael-meta');
+            if (metaText) {
+                metaText.innerHTML = 'Showing <strong>' + info.recordsDisplay + '</strong> of <strong>' + info.recordsTotal + '</strong> total rows';
+            }
         });
     }
 
-    /* ── Tooltip on truncated cells ── */
+    // Set cursor pointers for cell tooltips
     document.querySelectorAll('.ael-table td').forEach(function (td) {
         if (td.scrollWidth > td.clientWidth) {
             td.style.cursor = 'pointer';
         }
     });
-});
+}
+
+// Support AJAX container loading and normal document load
+if (window.jQuery && typeof($.fn.DataTable) !== 'undefined') {
+    initExcelTable();
+} else {
+    document.addEventListener('DOMContentLoaded', initExcelTable);
+}
 </script>
 <?php init_tail(); ?>

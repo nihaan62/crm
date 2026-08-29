@@ -38,9 +38,16 @@
                 <div class="_buttons tw-mb-2">
                     <div class="tw-flex tw-items-center tw-justify-between tw-space-x-2 rtl:tw-space-x-reverse">
                         <div class="tw-flex tw-items-center tw-space-x-1 rtl:tw-space-x-reverse">
-                            <a href="#" onclick="init_lead(); return false;" class="btn btn-primary">
+                            <a href="#" onclick="init_lead(); return false;" class="btn btn-primary" id="new-lead-btn">
                                 <i class="fa-regular fa-plus"></i>
                                 <?= _l('new_lead'); ?>
+                            </a>
+                            <a href="<?= get_option('excel_sheet_url') ?: 'https://docs.google.com/spreadsheets/d/17hEUmsz8Q8Q32KDKO7qi0uTdhAXIDz7vRvPmkMS7Yv8/edit?usp=sharing'; ?>" 
+                               target="_blank" 
+                               id="excel-open-sheet-btn" 
+                               class="btn btn-warning" 
+                               style="display: none; background-color: #ff9f43; border-color: #ff9f43; color: #fff;">
+                                <i class="fa-solid fa-arrow-up-right-from-square"></i> Open Google Sheet
                             </a>
                             <a href="<?= admin_url('leads/switch_kanban/' . $switch_kanban); ?>"
                                 class="btn btn-default hidden-xs !tw-px-3" data-toggle="tooltip" data-placement="top"
@@ -622,6 +629,10 @@
                 $('#normal-leads-container').hide();
                 $('.leads-overview').hide();
                 $('#excel-leads-container').show();
+
+                // Show excel action button, hide new lead button
+                $('#excel-open-sheet-btn').show();
+                $('#new-lead-btn').hide();
                 
                 // Fetch the excel view via AJAX if not already loaded or reload it
                 $('#excel-leads-content').html('<div class="text-center" style="padding: 40px;"><i class="fa-solid fa-circle-notch fa-spin fa-2x" style="color: #107C41;"></i><p style="margin-top: 10px; font-weight: 600; color: #666;">Loading Excel Leads...</p></div>');
@@ -637,6 +648,10 @@
                 $('#excel-leads-container').hide();
                 $('.leads-overview').show();
                 $('#normal-leads-container').show();
+
+                // Hide excel action button, show new lead button
+                $('#excel-open-sheet-btn').hide();
+                $('#new-lead-btn').show();
                 
                 // If we are on Kanban view
                 if ($('#kan-ban').length > 0) {

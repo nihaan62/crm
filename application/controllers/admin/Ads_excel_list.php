@@ -97,11 +97,14 @@ class Ads_excel_list extends AdminController
             if (count($lines) > 0) {
                 $rawHeaders = str_getcsv($lines[0]);
                 $headerMap  = [];
+                
+                // Define unwanted technical columns
+                $unwanted = ['id', 'ad_id', 'adset_id', 'campaign_id', 'form_id'];
 
                 foreach ($rawHeaders as $idx => $h) {
                     $hTrim = trim($h);
-                    // Skip created_time as requested ("check column name creted time no need")
-                    if (strtolower($hTrim) === 'created_time') {
+                    // Skip created_time and technical ID columns
+                    if (strtolower($hTrim) === 'created_time' || in_array(strtolower($hTrim), $unwanted)) {
                         continue;
                     }
                     if ($hTrim !== '') {
@@ -116,6 +119,14 @@ class Ads_excel_list extends AdminController
                     }
                     $rowValues = str_getcsv($lines[$i]);
                     if (empty(array_filter($rowValues))) {
+                        continue;
+                    }
+
+                    // Skip the row if it contains keys (e.g., "id" or "created_time" as data)
+                    if (isset($rowValues[0]) && (trim($rowValues[0]) === 'id' || trim($rowValues[0]) === 'created_time')) {
+                        continue;
+                    }
+                    if (isset($rowValues[1]) && trim($rowValues[1]) === 'created_time') {
                         continue;
                     }
 
