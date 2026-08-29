@@ -177,6 +177,9 @@ class Leads extends AdminController
             }
         }
 
+        $lead_count = get_option('excel_lead_count') ? (int)get_option('excel_lead_count') : 40;
+        $processed_leads = 0;
+
         for ($i = 0; $i < count($lines); $i++) {
             if ($i === $headerLineIndex) {
                 continue;
@@ -194,6 +197,11 @@ class Leads extends AdminController
             }
             if (isset($rowValues[1]) && trim($rowValues[1]) === 'created_time') {
                 continue;
+            }
+
+            $processed_leads++;
+            if ($processed_leads > $lead_count) {
+                break;
             }
 
             $phone = ($phoneIdx !== -1 && isset($rowValues[$phoneIdx])) ? trim($rowValues[$phoneIdx]) : '';
