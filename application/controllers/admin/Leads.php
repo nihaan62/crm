@@ -260,8 +260,79 @@ class Leads extends AdminController
             ];
 
             $this->db->insert(db_prefix() . 'leads', $lead_data);
-            $existing_phones[$pKey] = true;
         }
+    }
+
+    public function test_table()
+    {
+        if (!is_staff_member()) {
+            access_denied('Leads Test');
+        }
+
+        error_reporting(E_ALL);
+        ini_set('display_errors', 1);
+
+        try {
+            echo "<h1>Testing Leads Table Query</h1>";
+
+            $aColumns = [
+                '1',
+                db_prefix() . 'leads.id as id',
+                db_prefix() . 'leads.name as name',
+                'company',
+                db_prefix() . 'leads.email as email',
+                db_prefix() . 'leads.phonenumber as phonenumber',
+                'lead_value',
+                'firstname as assigned_firstname',
+                db_prefix() . 'leads_status.name as status_name',
+                db_prefix() . 'leads_sources.name as source_name',
+                'lastcontact',
+                'dateadded',
+            ];
+
+            $sIndexColumn = 'id';
+            $sTable       = db_prefix() . 'leads';
+
+            $join = [
+                'LEFT JOIN ' . db_prefix() . 'staff ON ' . db_prefix() . 'staff.staffid = ' . db_prefix() . 'leads.assigned',
+                'LEFT JOIN ' . db_prefix() . 'leads_status ON ' . db_prefix() . 'leads_status.id = ' . db_prefix() . 'leads.status',
+                'LEFT JOIN ' . db_prefix() . 'leads_sources ON ' . db_prefix() . 'leads_sources.id = ' . db_prefix() . 'leads.source',
+            ];
+
+            $this->db->select(implode(',', $aColumns));
+            $this->db->from($sTable);
+            foreach ($join as $j) {
+                if (preg_match('/LEFT JOIN\s+([^\s]+)\s+ON\s+(.+)/i', $j, $matches)) {
+                    $this->db->join($matches[1], $matches[2], 'left');
+                }
+            }
+            $query = $this->db->get();
+            $result = $query->result_array();
+            echo "<p style='color: green;'>Success! Query executed successfully. Total rows: " . count($result) . "</p>";
+
+            if (count($result) > 0) {
+                $first_id = $result[0]['id'];
+                echo "<p>Testing total_rows for notes on lead ID $first_id...</p>";
+                $notes = total_rows('notes', ['rel_id' => $first_id, 'rel_type' => 'lead']);
+                echo "<p>Notes count: $notes</p>";
+
+                echo "<p>Testing total_rows for files on lead ID $first_id...</p>";
+                $files = total_rows('files', ['rel_id' => $first_id, 'rel_type' => 'lead']);
+                echo "<p>Files count: $files</p>";
+                
+                echo "<p>Testing total_rows for cold_wp_messages on lead ID $first_id...</p>";
+                $wp = total_rows('cold_wp_messages', ['lead_id' => $first_id]);
+                echo "<p>Cold WP count: $wp</p>";
+            }
+
+            echo "<p>Loading the leads table file...</p>";
+            App_table::find('leads')->output();
+
+        } catch (\Throwable $e) {
+            echo "<p style='color: red; font-weight: bold;'>ERROR: " . $e->getMessage() . "</p>";
+            echo "<pre>" . $e->getTraceAsString() . "</pre>";
+        }
+        exit;
     }
 
     public function table()
