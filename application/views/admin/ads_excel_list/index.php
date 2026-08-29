@@ -258,60 +258,29 @@
         <div class="container-fluid">
 
             <!-- ── Hero Header ─────────────────────────────────── -->
-            <div class="ael-hero">
+            <div class="ael-hero" style="padding: 16px 24px; margin-bottom: 16px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; position:relative; z-index:1;">
                     <div>
-                        <h2 class="ael-hero-title">
+                        <h2 class="ael-hero-title" style="margin:0; font-size:22px;">
                             <i class="fa-solid fa-file-excel" style="margin-right:10px;"></i>Ads Excel List
                         </h2>
-                        <p class="ael-hero-sub">
-                            Live synchronized Facebook &amp; Instagram ad leads fetched directly from Google Sheets.
-                        </p>
                     </div>
                     <div class="ael-hero-actions">
-                        <a href="<?= admin_url('settings?group=general'); ?>" class="btn btn-default">
+                        <a href="<?= admin_url('settings?group=general'); ?>" class="btn btn-default btn-sm">
                             <i class="fa fa-cog"></i>&nbsp; Configure Settings
                         </a>
-                        <a href="<?= e($sheet_url); ?>" target="_blank" class="btn btn-warning">
+                        <a href="<?= e($sheet_url); ?>" target="_blank" class="btn btn-warning btn-sm">
                             <i class="fa-solid fa-arrow-up-right-from-square"></i>&nbsp; Open Google Sheet
                         </a>
                     </div>
                 </div>
             </div>
 
-            <!-- ── Stat Cards ──────────────────────────────────── -->
-            <div class="row">
-                <div class="col-sm-6 col-md-4">
-                    <div class="ael-stat-card ael-g">
-                        <div class="ael-stat-icon"><i class="fa-solid fa-users"></i></div>
-                        <div class="ael-stat-num"><?= count($rows); ?></div>
-                        <div class="ael-stat-lbl">Leads Displayed</div>
-                    </div>
-                </div>
-                <div class="col-sm-6 col-md-4">
-                    <div class="ael-stat-card ael-b">
-                        <div class="ael-stat-icon"><i class="fa-solid fa-sliders"></i></div>
-                        <div class="ael-stat-num"><?= $lead_count; ?></div>
-                        <div class="ael-stat-lbl">Configured Limit</div>
-                    </div>
-                </div>
-                <div class="col-sm-12 col-md-4">
-                    <div class="ael-stat-card ael-t">
-                        <div class="ael-stat-icon"><i class="fa-solid fa-table-cells"></i></div>
-                        <div class="ael-stat-num"><?= $total_sheet_rows; ?></div>
-                        <div class="ael-stat-lbl">Total Rows in Sheet</div>
-                    </div>
-                </div>
-            </div>
-
             <!-- ── Toolbar ─────────────────────────────────────── -->
-            <div class="ael-toolbar">
+            <div class="ael-toolbar" style="margin-bottom: 16px;">
                 <div class="ael-search-wrap">
                     <i class="fa fa-search"></i>
-                    <input type="text" id="aelSearchInput" placeholder="Search name, phone, email, platform..." />
-                </div>
-                <div class="ael-meta">
-                    Showing <strong><?= count($rows); ?></strong> of <strong><?= $total_sheet_rows; ?></strong> total rows
+                    <input type="text" id="aelSearchInput" placeholder="Search name, phone, email..." />
                 </div>
             </div>
 
@@ -320,7 +289,6 @@
                 <div class="ael-panel-header">
                     <i class="fa-solid fa-table-list" style="color:var(--ael-green-start);"></i>
                     <h5>Lead Records</h5>
-                    <span class="badge-count"><?= count($rows); ?></span>
                 </div>
 
                  <?php if (empty($rows)): ?>
@@ -479,7 +447,13 @@
                                                 <i class="fa-brands fa-whatsapp"></i> WhatsApp
                                             </a>
                                         <?php endif; ?>
-                                        <span class="text-muted" style="font-size:10px; display:block; text-align:center; font-weight:bold;">Not in CRM</span>
+                                        <button type="button" class="btn btn-warning btn-xs import-excel-lead" style="display:block; width:100%; font-weight:bold; font-size:11px; padding:3px 6px; background-color:#ff9f43; border-color:#ff9f43; color:#fff;" 
+                                                data-name="<?= e($fullName); ?>" 
+                                                data-phone="<?= e($phoneVal); ?>" 
+                                                data-email="<?= e(isset($row['email']) ? $row['email'] : ''); ?>"
+                                                data-extra="<?= e(json_encode($row)); ?>">
+                                            <i class="fa fa-plus"></i> Import to CRM
+                                        </button>
                                     <?php endif; ?>
                                 </td>
                             </tr>
@@ -508,7 +482,7 @@ function initExcelTable() {
         },
         "dom": "rtip", // Custom search/info/pagination layout
         "ordering": true,
-        "info": true,
+        "info": false,
         "paging": true,
         "columnDefs": [
             { "orderable": false, "targets": 0 } // index column not orderable
@@ -524,11 +498,6 @@ function initExcelTable() {
         
         newSearchInput.addEventListener('keyup', function () {
             table.search(this.value).draw();
-            var info = table.page.info();
-            var metaText = document.querySelector('.ael-meta');
-            if (metaText) {
-                metaText.innerHTML = 'Showing <strong>' + info.recordsDisplay + '</strong> of <strong>' + info.recordsTotal + '</strong> total rows';
-            }
         });
     }
 
@@ -546,5 +515,49 @@ if (window.jQuery && typeof($.fn.DataTable) !== 'undefined') {
 } else {
     document.addEventListener('DOMContentLoaded', initExcelTable);
 }
+
+// AJAX Lead Import Action
+$(document).off('click', '.import-excel-lead').on('click', '.import-excel-lead', function(e) {
+    e.preventDefault();
+    var btn = $(this);
+    var originalText = btn.html();
+    
+    btn.prop('disabled', true).html('<i class="fa-solid fa-circle-notch fa-spin"></i> Importing...');
+    
+    var postData = {
+        name: btn.data('name'),
+        phone: btn.data('phone'),
+        email: btn.data('email')
+    };
+    
+    var extra = btn.data('extra');
+    if (extra) {
+        $.extend(postData, extra);
+    }
+    
+    if (typeof(csrfData) !== 'undefined') {
+        postData[csrfData.token_name] = csrfData.hash;
+    }
+
+    $.post(admin_url + 'ads_excel_list/import_lead_ajax', postData, function(response) {
+        var res = JSON.parse(response);
+        if (res.success) {
+            alert_float('success', res.message);
+            
+            // Reload the category dynamically
+            if (typeof(handleLeadCategoryChange) === 'function') {
+                handleLeadCategoryChange();
+            } else {
+                window.location.reload();
+            }
+        } else {
+            alert_float('danger', res.message);
+            btn.prop('disabled', false).html(originalText);
+        }
+    }).fail(function() {
+        alert_float('danger', 'Failed to import lead.');
+        btn.prop('disabled', false).html(originalText);
+    });
+});
 </script>
 <?php init_tail(); ?>

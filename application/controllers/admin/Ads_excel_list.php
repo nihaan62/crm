@@ -108,13 +108,27 @@ class Ads_excel_list extends AdminController
                 $rawHeaders = str_getcsv($lines[$headerLineIndex]);
                 $headerMap  = [];
                 
-                // Define unwanted technical columns
-                $unwanted = ['id', 'ad_id', 'adset_id', 'campaign_id', 'form_id'];
+                // Define unwanted technical and metadata columns
+                $unwanted = [
+                    'id', 'ad_id', 'adset_id', 'campaign_id', 'form_id', 
+                    'ad_name', 'adset_name', 'campaign_name', 'form_name', 
+                    'is_organic', 'organic', 'lead_status', 'note', 'cold wp send', 
+                    'cold_wp_send', 'cold wp send status', 'created_time'
+                ];
 
                 foreach ($rawHeaders as $idx => $h) {
                     $hTrim = trim($h);
-                    // Skip created_time and technical ID columns
-                    if (strtolower($hTrim) === 'created_time' || in_array(strtolower($hTrim), $unwanted)) {
+                    $hLower = strtolower($hTrim);
+                    
+                    // Skip unwanted columns if they match or contain unwanted tags
+                    $shouldSkip = false;
+                    foreach ($unwanted as $u) {
+                        if ($hLower === $u || strpos($hLower, $u) !== false) {
+                            $shouldSkip = true;
+                            break;
+                        }
+                    }
+                    if ($shouldSkip) {
                         continue;
                     }
                     if ($hTrim !== '') {
@@ -199,5 +213,77 @@ class Ads_excel_list extends AdminController
         $data['fetch_error']      = $fetch_error;
 
         $this->load->view('admin/ads_excel_list/index', $data);
+    }
+
+    public function import_lead_ajax()
+    {
+        if (!$this->input->is_ajax_request()) {
+            ajax_access_denied();
+        }
+
+        $name = $this->input->post('name');
+        $phone = $this->input->post('phone');
+        $email = $this->input->post('email');
+        
+        // Clean phone number format for lead creation
+        $phoneClean = preg_replace('/[^0-9+]/', '', $phone);
+
+        // Format extra questionnaire fields into description
+        $description = '';
+        foreach ($this->input->post() as $key => $val) {
+            if (in_array($key, ['name', 'phone', 'email', 'db_lead'])) {
+                continue;
+            }
+            // Skip Perfex CRM global properties like CSRF token
+            if ($key === $this->security->get_csrf_token_name()) {
+                continue;
+            }
+            if (!empty($val) && is_string($val)) {
+                $cleanKey = ucwords(str_replace(['_', '?', '.'], [' ', '', ''], $key));
+                $description .= $cleanKey . ': ' . $val . "\n";
+            }
+        }
+
+        $lead_data = [
+            'name'        => $name ?: 'Excel Lead',
+            'phonenumber' => $phoneClean,
+            'email'       => $email,
+            'description' => trim($description),
+            'source'      => 1, // default fallback source ID
+            'status'      => 1, // default status ID (usually customer/created)
+            'assigned'    => get_staff_user_id() ?: 1,
+            'dateadded'   => date('Y-m-d H:i:s')
+        ];
+
+        // Find or create 'Ads Excel List' source
+        $this->db->where('name', 'Ads Excel List');
+        $source = $this->db->get(db_prefix() . 'leads_sources')->row();
+        if ($source) {
+            $lead_data['source'] = $source->id;
+        } else {
+            // Check 'Ads WhatsApp'
+            $this->db->where('name', 'Ads WhatsApp');
+            $source2 = $this->db->get(db_prefix() . 'leads_sources')->row();
+            if ($source2) {
+                $lead_data['source'] = $source2->id;
+            }
+        }
+
+        $success = $this->db->insert(db_prefix() . 'leads', $lead_data);
+        $insert_id = $this->db->insert_id();
+
+        if ($success && $insert_id) {
+            echo json_encode([
+                'success' => true,
+                'lead_id' => $insert_id,
+                'message' => 'Lead successfully imported to CRM.'
+            ]);
+        } else {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Failed to import lead. Please try again.'
+            ]);
+        }
+        exit;
     }
 }
