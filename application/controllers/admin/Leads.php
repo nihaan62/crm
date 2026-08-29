@@ -47,6 +47,9 @@ class Leads extends AdminController
         // Automatically sync Excel leads from Google Sheets to database
         $this->sync_excel_leads();
 
+        // Clean up any existing notes that only have Created Time
+        $this->db->query("UPDATE " . db_prefix() . "leads SET description = '' WHERE description LIKE 'Created Time%'");
+
         $data['switch_kanban'] = true;
 
         if ($this->session->userdata('leads_kanban_view') == 'true') {
@@ -59,7 +62,9 @@ class Leads extends AdminController
             $this->load->model('gdpr_model');
             $data['consent_purposes'] = $this->gdpr_model->get_consent_purposes();
         }
-        $data['summary']  = get_leads_summary();
+        $category = $this->input->get('category') ?? '';
+        $batch_name = $this->input->get('batch_name') ?? '';
+        $data['summary']  = get_leads_summary($category, $batch_name);
         $data['statuses'] = $this->leads_model->get_status();
         $data['sources']  = $this->leads_model->get_source();
         $data['title']    = _l('leads');
@@ -241,6 +246,10 @@ class Leads extends AdminController
                     continue;
                 }
                 $hTrim = trim($h);
+                $hLower = str_replace('_', ' ', strtolower($hTrim));
+                if (strpos($hLower, 'created') !== false || strpos($hLower, 'time') !== false) {
+                    continue;
+                }
                 if (!empty($hTrim) && isset($rowValues[$idx]) && !empty(trim($rowValues[$idx]))) {
                     $cleanKey = ucwords(str_replace(['_', '?', '.'], [' ', '', ''], $hTrim));
                     $description .= $cleanKey . ': ' . trim($rowValues[$idx]) . "\n";

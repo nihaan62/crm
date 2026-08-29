@@ -46,7 +46,7 @@
                                target="_blank" 
                                id="excel-open-sheet-btn" 
                                class="btn btn-warning" 
-                               style="display: none; background-color: #ff9f43; border-color: #ff9f43; color: #fff;">
+                               style="<?= ($selected_cat === 'ads_excel_list') ? '' : 'display: none;'; ?> background-color: #ff9f43; border-color: #ff9f43; color: #fff;">
                                 <i class="fa-solid fa-arrow-up-right-from-square"></i> Open Google Sheet
                             </a>
                             <a href="<?= admin_url('leads/switch_kanban/' . $switch_kanban); ?>"
@@ -65,13 +65,15 @@
                                 <?= _l('import_leads'); ?>
                             </a>
                             <?php } ?>
+                            <?php $selected_batch = $this->input->get('batch_name') ?? ''; ?>
                             <div class="tw-inline-block" style="min-width: 150px; vertical-align: middle;">
                                 <select name="view_batch_name" class="selectpicker" data-width="100%" data-none-selected-text="All Sections" data-live-search="true">
-                                    <option value="">All Sections</option>
+                                    <option value="" <?= ($selected_batch === '') ? 'selected' : ''; ?>>All Sections</option>
                                     <?php 
                                     $batches = $this->db->select('DISTINCT(batch_name)')->where('batch_name IS NOT NULL')->where('batch_name !=', '')->order_by('batch_name', 'asc')->get(db_prefix() . 'leads')->result_array();
                                     foreach ($batches as $batch) {
-                                        echo '<option value="' . e($batch['batch_name']) . '">' . e($batch['batch_name']) . '</option>';
+                                        $selected = ($selected_batch === $batch['batch_name']) ? 'selected' : '';
+                                        echo '<option value="' . e($batch['batch_name']) . '" ' . $selected . '>' . e($batch['batch_name']) . '</option>';
                                     }
                                     ?>
                                 </select>
@@ -623,73 +625,23 @@
             data.lead_category = $('select[name="view_lead_category"]').val();
         });
 
-        function handleLeadCategoryChange() {
+        function handleLeadFiltersChange() {
             var category = $('select[name="view_lead_category"]').val();
+            var batch = $('select[name="view_batch_name"]').val();
             
-            // Toggle the Open Google Sheet action button
-            if (category === 'ads_excel_list') {
-                $('#excel-open-sheet-btn').show();
-            } else {
-                $('#excel-open-sheet-btn').hide();
+            var url = admin_url + 'leads?category=' + category;
+            if (batch) {
+                url += '&batch_name=' + encodeURIComponent(batch);
             }
-
-            // Always display standard leads layout (excel AJAX sub-view is no longer swapped in)
-            $('#excel-leads-container').hide();
-            $('.leads-overview').show();
-            $('#normal-leads-container').show();
-            $('#new-lead-btn').show();
-            
-            // If we are on Kanban view
-            if ($('#kan-ban').length > 0) {
-                var hiddenInput = $('#kanban-params input[name="lead_category"]');
-                if (hiddenInput.length === 0) {
-                    hiddenInput = $('<input>').attr({
-                        type: 'hidden',
-                        name: 'lead_category'
-                    });
-                    $('#kanban-params').append(hiddenInput);
-                }
-                hiddenInput.val(category);
-                leads_kanban();
-            } else {
-                // If we are on List view (DataTables)
-                if ($.fn.DataTable.isDataTable('.table-leads')) {
-                    $('.table-leads').DataTable().ajax.reload();
-                }
-            }
+            window.location.href = url;
         }
 
         $('body').on('change', 'select[name="view_lead_category"]', function() {
-            handleLeadCategoryChange();
+            handleLeadFiltersChange();
         });
 
-        // Trigger on load if a category parameter exists
-        if ($('select[name="view_lead_category"]').val() !== '') {
-            handleLeadCategoryChange();
-        }
-
-        // When the batch name filter select changes
         $('body').on('change', 'select[name="view_batch_name"]', function() {
-            var val = $(this).val();
-            // 1. If we are on Kanban view
-            if ($('#kan-ban').length > 0) {
-                // Find or create the hidden input in #kanban-params
-                var hiddenInput = $('#kanban-params input[name="batch_name"]');
-                if (hiddenInput.length === 0) {
-                    hiddenInput = $('<input>').attr({
-                        type: 'hidden',
-                        name: 'batch_name'
-                    });
-                    $('#kanban-params').append(hiddenInput);
-                }
-                hiddenInput.val(val);
-                leads_kanban();
-            } else {
-                // 2. If we are on List view (DataTables)
-                if ($.fn.DataTable.isDataTable('.table-leads')) {
-                    $('.table-leads').DataTable().ajax.reload();
-                }
-            }
+            handleLeadFiltersChange();
         });
 
         // Listen to change/blur on the lead notes textarea to save automatically via AJAX

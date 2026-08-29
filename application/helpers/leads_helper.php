@@ -83,7 +83,7 @@ function get_lead_hash($id)
  * Get leads summary
  * @return array
  */
-function get_leads_summary()
+function get_leads_summary($category = '', $batch_name = '')
 {
     $CI = &get_instance();
     if (!class_exists('leads_model')) {
@@ -113,16 +113,38 @@ function get_leads_summary()
         $sql .= ',SUM(lead_value) as value';
         $sql .= ' FROM ' . db_prefix() . 'leads';
 
+        $where = [];
         if (isset($status['lost'])) {
-            $sql .= ' WHERE lost=1';
+            $where[] = 'lost=1';
         } elseif (isset($status['junk'])) {
-            $sql .= ' WHERE junk=1';
+            $where[] = 'junk=1';
         } else {
-            $sql .= ' WHERE status=' . $status['id'];
+            $where[] = 'status=' . $status['id'];
         }
         if (!$has_permission_view) {
-            $sql .= ' AND ' . $whereNoViewPermission;
+            $where[] = $whereNoViewPermission;
         }
+
+        // Apply category filter
+        if ($category === 'converted') {
+            $where[] = 'id IN (SELECT leadid FROM ' . db_prefix() . 'clients)';
+        } elseif ($category === 'cold_wp') {
+            $where[] = 'lost = 0 AND junk = 0';
+        } elseif ($category === 'ads_wp') {
+            $where[] = 'source = (SELECT id FROM ' . db_prefix() . 'leads_sources WHERE name = "Ads WhatsApp" LIMIT 1)';
+        } elseif ($category === 'ads_excel_list') {
+            $where[] = 'source = (SELECT id FROM ' . db_prefix() . 'leads_sources WHERE name = "Ads Excel List" LIMIT 1)';
+        }
+
+        // Apply batch name filter
+        if (!empty($batch_name)) {
+            $where[] = 'batch_name = "' . $CI->db->escape_str($batch_name) . '"';
+        }
+
+        if (count($where) > 0) {
+            $sql .= ' WHERE ' . implode(' AND ', $where);
+        }
+
         $sql .= ' UNION ALL ';
         $sql = trim($sql);
     }
@@ -133,11 +155,25 @@ function get_leads_summary()
     $sql    = substr($sql, 0, -10);
     $result = $CI->db->query($sql)->result();
 
+    // Calculate total leads with filters applied
+    $CI->db->from(db_prefix() . 'leads');
     if (!$has_permission_view) {
         $CI->db->where($whereNoViewPermission);
     }
-
-    $total_leads = $CI->db->count_all_results(db_prefix() . 'leads');
+    if ($category === 'converted') {
+        $CI->db->where('id IN (SELECT leadid FROM ' . db_prefix() . 'clients)');
+    } elseif ($category === 'cold_wp') {
+        $CI->db->where('lost', 0);
+        $CI->db->where('junk', 0);
+    } elseif ($category === 'ads_wp') {
+        $CI->db->where('source = (SELECT id FROM ' . db_prefix() . 'leads_sources WHERE name = "Ads WhatsApp" LIMIT 1)');
+    } elseif ($category === 'ads_excel_list') {
+        $CI->db->where('source = (SELECT id FROM ' . db_prefix() . 'leads_sources WHERE name = "Ads Excel List" LIMIT 1)');
+    }
+    if (!empty($batch_name)) {
+        $CI->db->where('batch_name', $batch_name);
+    }
+    $total_leads = $CI->db->count_all_results();
 
     foreach ($statuses as $key => $status) {
         if (isset($status['lost']) || isset($status['junk'])) {
