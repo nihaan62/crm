@@ -62,9 +62,91 @@ class Leads extends AdminController
             $this->load->model('gdpr_model');
             $data['consent_purposes'] = $this->gdpr_model->get_consent_purposes();
         }
-        $category = $this->input->get('category') ?? '';
         $batch_name = $this->input->get('batch_name') ?? '';
-        $data['summary']  = get_leads_summary($category, $batch_name);
+        
+        $summary = [];
+        
+        // 1. All Leads
+        $this->db->from(db_prefix() . 'leads');
+        if (staff_cant('view', 'leads')) {
+            $this->db->where('(assigned = ' . get_staff_user_id() . ' OR addedfrom = ' . get_staff_user_id() . ' OR is_public = 1)');
+        }
+        if (!empty($batch_name)) {
+            $this->db->where('batch_name', $batch_name);
+        }
+        $summary[] = [
+            'key' => '',
+            'name' => 'All Leads',
+            'total' => $this->db->count_all_results(),
+            'color' => '#1d3557'
+        ];
+
+        // 2. Converted Leads
+        $this->db->from(db_prefix() . 'leads');
+        $this->db->where('id IN (SELECT leadid FROM ' . db_prefix() . 'clients)');
+        if (staff_cant('view', 'leads')) {
+            $this->db->where('(assigned = ' . get_staff_user_id() . ' OR addedfrom = ' . get_staff_user_id() . ' OR is_public = 1)');
+        }
+        if (!empty($batch_name)) {
+            $this->db->where('batch_name', $batch_name);
+        }
+        $summary[] = [
+            'key' => 'converted',
+            'name' => 'Converted Leads',
+            'total' => $this->db->count_all_results(),
+            'color' => '#2e7d32'
+        ];
+
+        // 3. Cold WP Messages
+        $this->db->from(db_prefix() . 'leads');
+        $this->db->where('lost', 0);
+        $this->db->where('junk', 0);
+        if (staff_cant('view', 'leads')) {
+            $this->db->where('(assigned = ' . get_staff_user_id() . ' OR addedfrom = ' . get_staff_user_id() . ' OR is_public = 1)');
+        }
+        if (!empty($batch_name)) {
+            $this->db->where('batch_name', $batch_name);
+        }
+        $summary[] = [
+            'key' => 'cold_wp',
+            'name' => 'Cold WP Messages',
+            'total' => $this->db->count_all_results(),
+            'color' => '#f57c00'
+        ];
+
+        // 4. Ads WhatsApp Leads
+        $this->db->from(db_prefix() . 'leads');
+        $this->db->where('source = (SELECT id FROM ' . db_prefix() . 'leads_sources WHERE name = "Ads WhatsApp" LIMIT 1)');
+        if (staff_cant('view', 'leads')) {
+            $this->db->where('(assigned = ' . get_staff_user_id() . ' OR addedfrom = ' . get_staff_user_id() . ' OR is_public = 1)');
+        }
+        if (!empty($batch_name)) {
+            $this->db->where('batch_name', $batch_name);
+        }
+        $summary[] = [
+            'key' => 'ads_wp',
+            'name' => 'Ads WhatsApp Leads',
+            'total' => $this->db->count_all_results(),
+            'color' => '#128c7e'
+        ];
+
+        // 5. Ads Excel List
+        $this->db->from(db_prefix() . 'leads');
+        $this->db->where('source = (SELECT id FROM ' . db_prefix() . 'leads_sources WHERE name = "Ads Excel List" LIMIT 1)');
+        if (staff_cant('view', 'leads')) {
+            $this->db->where('(assigned = ' . get_staff_user_id() . ' OR addedfrom = ' . get_staff_user_id() . ' OR is_public = 1)');
+        }
+        if (!empty($batch_name)) {
+            $this->db->where('batch_name', $batch_name);
+        }
+        $summary[] = [
+            'key' => 'ads_excel_list',
+            'name' => 'Ads Excel List',
+            'total' => $this->db->count_all_results(),
+            'color' => '#107c41'
+        ];
+
+        $data['summary']  = $summary;
         $data['statuses'] = $this->leads_model->get_status();
         $data['sources']  = $this->leads_model->get_source();
         $data['title']    = _l('leads');

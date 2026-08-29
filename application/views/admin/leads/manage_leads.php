@@ -10,27 +10,18 @@
                         <?= _l('leads'); ?>
                     </h4>
                     <div class="tw-grid tw-gap-2 sm:tw-grid-flow-col sm:tw-auto-cols-max tw-overflow-x-auto">
-                        <?php foreach ($summary as $status) { ?>
-                        <?php if (isset($status['junk']) || isset($status['lost'])) { ?>
-                        <span class="label label-danger" data-toggle="tooltip">
-                            <?= $status['total']; ?>
-                            <?= e($status['name']); ?>
-                            -
-                            <?= $status['percent']; ?>%
-                        </span>
-                        <?php } else { ?>
+                        <?php foreach ($summary as $item) { ?>
                         <button type="button"
-                            @click="extra.leadsRules = <?= app\services\utilities\Js::from($table->findRule('status')->setValue([$status['id']])); ?>"
-                            class="tw-bg-transparent tw-border tw-border-solid tw-border-neutral-300 tw-shadow-sm tw-py-1 tw-px-2 tw-rounded-lg tw-text-sm hover:tw-bg-neutral-200/60 tw-text-neutral-700 hover:tw-text-neutral-600 focus:tw-text-neutral-600 text-left">
+                            onclick="window.location.href = '<?= admin_url('leads?category=' . $item['key'] . (!empty($selected_batch) ? '&batch_name=' . urlencode($selected_batch) : '')); ?>';"
+                            class="tw-bg-transparent tw-border tw-border-solid tw-border-neutral-300 tw-shadow-sm tw-py-1.5 tw-px-3 tw-rounded-lg tw-text-sm hover:tw-bg-neutral-200/60 tw-text-neutral-700 hover:tw-text-neutral-600 focus:tw-text-neutral-600 text-left"
+                            style="<?= ($selected_cat === $item['key']) ? 'background-color: #f3f4f6; border-color: #999; font-weight: bold;' : ''; ?>">
                             <span class="tw-font-semibold tw-mr-1 rtl:tw-ml-1">
-                                <?= e($status['total']); ?>
+                                <?= e($item['total']); ?>
                             </span>
-                            <span
-                                style="color:<?= e($status['color']); ?>">
-                                <?= e($status['name']); ?>
+                            <span style="color:<?= e($item['color']); ?>; font-weight: 600;">
+                                <?= e($item['name']); ?>
                             </span>
                         </button>
-                        <?php } ?>
                         <?php } ?>
                     </div>
                 </div>
