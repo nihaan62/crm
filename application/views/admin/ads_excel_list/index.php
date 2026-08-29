@@ -313,12 +313,19 @@
                     <span class="badge-count"><?= count($rows); ?></span>
                 </div>
 
-                <?php if (empty($rows)): ?>
+                 <?php if (empty($rows)): ?>
                 <div class="ael-empty">
                     <i class="fa-solid fa-file-excel"></i>
                     <h5>No Leads Found</h5>
-                    <p>No leads could be fetched from the Google Sheet.<br>
-                    <small>Check your Google Sheet link in <a href="<?= admin_url('settings?group=general'); ?>">General Settings</a>.</small></p>
+                    <?php if (!empty($fetch_error)): ?>
+                        <div class="alert alert-danger" style="display:inline-block; max-width:600px; margin-top:10px; font-weight:600; text-align:left;">
+                            <i class="fa fa-exclamation-triangle" style="font-size:16px; display:inline; margin-right:8px; color:#a94442;"></i>
+                            <?= e($fetch_error); ?>
+                        </div>
+                    <?php else: ?>
+                        <p>No leads could be fetched from the Google Sheet.<br>
+                        <small>Check your Google Sheet link in <a href="<?= admin_url('settings?group=general'); ?>">General Settings</a>.</small></p>
+                    <?php endif; ?>
                 </div>
                 <?php else: ?>
                 <div class="table-responsive">

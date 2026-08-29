@@ -69,6 +69,18 @@
                                     ?>
                                 </select>
                             </div>
+                            <?php $selected_cat = $this->input->get('category') ?? ''; ?>
+                            <div class="tw-inline-block" style="min-width: 180px; vertical-align: middle; margin-left: 5px;">
+                                <select name="view_lead_category" class="selectpicker" data-width="100%" data-none-selected-text="All Leads" data-live-search="true">
+                                    <option value="" <?= ($selected_cat === '') ? 'selected' : ''; ?> data-subtext="Default">All Leads</option>
+                                    <option value="converted" <?= ($selected_cat === 'converted') ? 'selected' : ''; ?>>Converted Leads</option>
+                                    <option value="cold_wp" <?= ($selected_cat === 'cold_wp') ? 'selected' : ''; ?>>Cold WP Messages</option>
+                                    <option value="loans_ads" <?= ($selected_cat === 'loans_ads') ? 'selected' : ''; ?>>Loans ADS Lead</option>
+                                    <option value="it_lds" <?= ($selected_cat === 'it_lds') ? 'selected' : ''; ?>>IT LDS Lead</option>
+                                    <option value="ads_wp" <?= ($selected_cat === 'ads_wp') ? 'selected' : ''; ?>>Ads WhatsApp Leads</option>
+                                    <option value="ads_excel_list" <?= ($selected_cat === 'ads_excel_list') ? 'selected' : ''; ?>>Ads Excel List</option>
+                                </select>
+                            </div>
                         </div>
                         <div>
                             <?php if ($this->session->userdata('leads_kanban_view') == 'true') { ?>
@@ -94,11 +106,12 @@
                         </div>
                     </div>
                 </div>
-                <div
-                    class="<?= $isKanBan ? '' : 'panel_s'; ?>">
+                <div id="normal-leads-container">
                     <div
-                        class="<?= $isKanBan ? '' : 'panel-body'; ?>">
-                        <div class="tab-content">
+                        class="<?= $isKanBan ? '' : 'panel_s'; ?>">
+                        <div
+                            class="<?= $isKanBan ? '' : 'panel-body'; ?>">
+                            <div class="tab-content">
                             <?php
                         if ($isKanBan) { ?>
                             <div class="active kan-ban-tab tw-mt-4" id="kan-ban-tab" style="overflow:auto;">
@@ -319,6 +332,18 @@
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <div id="excel-leads-container" style="display: none;">
+                <div class="panel_s">
+                    <div class="panel-body" id="excel-leads-content">
+                        <div class="text-center" style="padding: 40px;">
+                            <i class="fa-solid fa-circle-notch fa-spin fa-2x" style="color: #107C41;"></i>
+                            <p style="margin-top: 10px; font-weight: 600; color: #666;">Loading Excel Leads...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
             </div>
         </div>
     </div>
@@ -586,7 +611,62 @@
         // Listen to DataTables pre-XHR event to append the custom filter parameter
         $('table.table-leads').on('preXhr.dt', function(e, settings, data) {
             data.batch_name = $('select[name="view_batch_name"]').val();
+            data.lead_category = $('select[name="view_lead_category"]').val();
         });
+
+        function handleLeadCategoryChange() {
+            var category = $('select[name="view_lead_category"]').val();
+            
+            if (category === 'ads_excel_list') {
+                // Hide normal leads, show excel container
+                $('#normal-leads-container').hide();
+                $('.leads-overview').hide();
+                $('#excel-leads-container').show();
+                
+                // Fetch the excel view via AJAX if not already loaded or reload it
+                $('#excel-leads-content').html('<div class="text-center" style="padding: 40px;"><i class="fa-solid fa-circle-notch fa-spin fa-2x" style="color: #107C41;"></i><p style="margin-top: 10px; font-weight: 600; color: #666;">Loading Excel Leads...</p></div>');
+                
+                $.get(admin_url + 'ads_excel_list', function(html) {
+                    var content = $(html).find('.content-inner').html() || $(html).find('#wrapper').html() || html;
+                    $('#excel-leads-content').html(content);
+                }).fail(function() {
+                    $('#excel-leads-content').html('<div class="alert alert-danger text-center">Failed to load Ads Excel List.</div>');
+                });
+            } else {
+                // Hide excel view, show normal leads
+                $('#excel-leads-container').hide();
+                $('.leads-overview').show();
+                $('#normal-leads-container').show();
+                
+                // If we are on Kanban view
+                if ($('#kan-ban').length > 0) {
+                    var hiddenInput = $('#kanban-params input[name="lead_category"]');
+                    if (hiddenInput.length === 0) {
+                        hiddenInput = $('<input>').attr({
+                            type: 'hidden',
+                            name: 'lead_category'
+                        });
+                        $('#kanban-params').append(hiddenInput);
+                    }
+                    hiddenInput.val(category);
+                    leads_kanban();
+                } else {
+                    // If we are on List view (DataTables)
+                    if ($.fn.DataTable.isDataTable('.table-leads')) {
+                        $('.table-leads').DataTable().ajax.reload();
+                    }
+                }
+            }
+        }
+
+        $('body').on('change', 'select[name="view_lead_category"]', function() {
+            handleLeadCategoryChange();
+        });
+
+        // Trigger on load if a category parameter exists
+        if ($('select[name="view_lead_category"]').val() !== '') {
+            handleLeadCategoryChange();
+        }
 
         // When the batch name filter select changes
         $('body').on('change', 'select[name="view_batch_name"]', function() {

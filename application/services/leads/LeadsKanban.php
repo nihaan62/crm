@@ -46,13 +46,29 @@ class LeadsKanban extends AbstractKanban
     {
         $this->ci->db->select(db_prefix() . 'leads.title, ' . db_prefix() . 'leads.website, ' . db_prefix() . 'leads.lead_value, ' . db_prefix() . 'leads.address, ' . db_prefix() . 'leads.city, ' . db_prefix() . 'leads.state, ' . db_prefix() . 'leads.country, ' . db_prefix() . 'leads.zip, ' . db_prefix() . 'leads.name as lead_name,' . db_prefix() . 'leads_sources.name as source_name,' . db_prefix() . 'leads.id as id,' . db_prefix() . 'leads.assigned,' . db_prefix() . 'leads.email,' . db_prefix() . 'leads.phonenumber,' . db_prefix() . 'leads.company,' . db_prefix() . 'leads.dateadded,' . db_prefix() . 'leads.status,' . db_prefix() . 'leads.lastcontact,(SELECT COUNT(*) FROM ' . db_prefix() . 'clients WHERE leadid=' . db_prefix() . 'leads.id) as is_lead_client, (SELECT COUNT(id) FROM ' . db_prefix() . 'files WHERE rel_id=' . db_prefix() . 'leads.id AND rel_type="lead") as total_files, (SELECT COUNT(id) FROM ' . db_prefix() . 'notes WHERE rel_id=' . db_prefix() . 'leads.id AND rel_type="lead") as total_notes,(SELECT GROUP_CONCAT(name SEPARATOR ",") FROM ' . db_prefix() . 'taggables JOIN ' . db_prefix() . 'tags ON ' . db_prefix() . 'taggables.tag_id = ' . db_prefix() . 'tags.id WHERE rel_id = ' . db_prefix() . 'leads.id and rel_type="lead" ORDER by tag_order ASC) as tags');
         $this->ci->db->from('leads');
-        $this->ci->db->join(db_prefix() . 'leads_sources', db_prefix() . 'leads_sources.id=' . db_prefix() . 'leads.source');
+        $this->ci->db->join(db_prefix() . 'leads_sources', db_prefix() . 'leads_sources.id=' . db_prefix() . 'leads.source', 'left');
         $this->ci->db->join(db_prefix() . 'staff', db_prefix() . 'staff.staffid=' . db_prefix() . 'leads.assigned', 'left');
         $this->ci->db->where('status', $this->status);
 
         $batch_name = $this->ci->input->get('batch_name') ?: $this->ci->input->post('batch_name');
         if ($batch_name) {
             $this->ci->db->where(db_prefix() . 'leads.batch_name', $batch_name);
+        }
+
+        $category = $this->ci->input->get('lead_category') ?: $this->ci->input->post('lead_category');
+        if ($category) {
+            if ($category === 'converted') {
+                $this->ci->db->where(db_prefix() . 'leads.id IN (SELECT leadid FROM ' . db_prefix() . 'clients)');
+            } elseif ($category === 'cold_wp') {
+                $this->ci->db->where('lost', 0);
+                $this->ci->db->where('junk', 0);
+            } elseif ($category === 'loans_ads') {
+                $this->ci->db->where(db_prefix() . 'leads.source = (SELECT id FROM ' . db_prefix() . 'leads_sources WHERE name = "Loans ADS" LIMIT 1)');
+            } elseif ($category === 'it_lds') {
+                $this->ci->db->where(db_prefix() . 'leads.source = (SELECT id FROM ' . db_prefix() . 'leads_sources WHERE name = "IT LDS" LIMIT 1)');
+            } elseif ($category === 'ads_wp') {
+                $this->ci->db->where(db_prefix() . 'leads.source = (SELECT id FROM ' . db_prefix() . 'leads_sources WHERE name = "Ads WhatsApp" LIMIT 1)');
+            }
         }
 
         if (staff_cant('view', 'leads')) {

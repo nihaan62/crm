@@ -32,14 +32,61 @@ class Ads_excel_list extends AdminController
         }
 
         // Fetch CSV contents
-        $ch = curl_init($csv_url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)');
-        $csvContent = curl_exec($ch);
-        curl_close($ch);
+        $csvContent = '';
+        $fetch_error = '';
+
+        $opts = [
+            "http" => [
+                "method" => "GET",
+                "header" => "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)\r\n",
+                "timeout" => 15
+            ],
+            "ssl" => [
+                "verify_peer" => false,
+                "verify_peer_name" => false,
+            ]
+        ];
+        $context = stream_context_create($opts);
+
+        if (function_exists('curl_init')) {
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $csv_url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            if (!ini_get('open_basedir')) {
+                curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+            }
+            curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+            curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)');
+            $csvContent = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curl_err = curl_error($ch);
+            curl_close($ch);
+
+            if (($httpCode == 301 || $httpCode == 302) && ini_get('open_basedir')) {
+                $csvContent = @file_get_contents($csv_url, false, $context);
+            }
+            
+            if (empty($csvContent)) {
+                $fetch_error = "cURL error: " . $curl_err . " (HTTP Status " . $httpCode . ")";
+            }
+        }
+
+        if (empty($csvContent)) {
+            $csvContent = @file_get_contents($csv_url, false, $context);
+            if (empty($csvContent)) {
+                $fetch_error = "Failed to fetch Google Sheet data. Please check your sheet URL and internet connection.";
+            } else {
+                $fetch_error = "";
+            }
+        }
+
+        // Check if returned content is HTML (meaning the Google Sheet is private and redirected to Google Login)
+        if (!empty($csvContent) && (strpos($csvContent, '<!DOCTYPE html>') !== false || strpos($csvContent, '<html') !== false)) {
+            $fetch_error = "The Google Sheet is private. Please share it as 'Anyone with the link can view' so the CRM can read it.";
+            $csvContent = '';
+        }
 
         $headers    = [];
         $data_rows  = [];
@@ -91,6 +138,7 @@ class Ads_excel_list extends AdminController
         $data['headers']          = $headers;
         $data['rows']             = $data_rows;
         $data['total_sheet_rows'] = $total_sheet_rows;
+        $data['fetch_error']      = $fetch_error;
 
         $this->load->view('admin/ads_excel_list/index', $data);
     }

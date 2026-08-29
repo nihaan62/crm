@@ -202,7 +202,7 @@ function app_init_admin_sidebar_menu_items()
             $CI->app_menu->add_sidebar_children_item('leads', [
                 'slug'     => 'leads-converted',
                 'name'     => 'Converted Leads',
-                'href'     => admin_url('leads/converted_leads'),
+                'href'     => admin_url('leads?category=converted'),
                 'position' => 10,
                 'badge'    => [],
             ]);
@@ -212,7 +212,7 @@ function app_init_admin_sidebar_menu_items()
             $CI->app_menu->add_sidebar_children_item('leads', [
                 'slug'     => 'leads-cold-wp',
                 'name'     => 'Cold WP Messages',
-                'href'     => admin_url('cold_wp'),
+                'href'     => admin_url('leads?category=cold_wp'),
                 'position' => 15,
                 'badge'    => [],
             ]);
@@ -222,7 +222,7 @@ function app_init_admin_sidebar_menu_items()
             $CI->app_menu->add_sidebar_children_item('leads', [
                 'slug'     => 'leads-loans-ads',
                 'name'     => 'Loans ADS Lead',
-                'href'     => admin_url('digital_marketing/loans'),
+                'href'     => admin_url('leads?category=loans_ads'),
                 'position' => 20,
                 'badge'    => [],
             ]);
@@ -230,7 +230,7 @@ function app_init_admin_sidebar_menu_items()
             $CI->app_menu->add_sidebar_children_item('leads', [
                 'slug'     => 'leads-it-lds',
                 'name'     => 'IT LDS Lead',
-                'href'     => admin_url('digital_marketing/it'),
+                'href'     => admin_url('leads?category=it_lds'),
                 'position' => 25,
                 'badge'    => [],
             ]);
@@ -238,7 +238,7 @@ function app_init_admin_sidebar_menu_items()
             $CI->app_menu->add_sidebar_children_item('leads', [
                 'slug'     => 'leads-ads-wp',
                 'name'     => 'Ads WhatsApp Leads',
-                'href'     => admin_url('ads_wp_leads'),
+                'href'     => admin_url('leads?category=ads_wp'),
                 'position' => 30,
                 'badge'    => [],
             ]);
@@ -246,7 +246,7 @@ function app_init_admin_sidebar_menu_items()
             $CI->app_menu->add_sidebar_children_item('leads', [
                 'slug'     => 'leads-ads-excel',
                 'name'     => 'Ads Excel List',
-                'href'     => admin_url('ads_excel_list'),
+                'href'     => admin_url('leads?category=ads_excel_list'),
                 'position' => 35,
                 'badge'    => [],
             ]);
