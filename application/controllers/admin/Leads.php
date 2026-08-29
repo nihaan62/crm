@@ -2059,5 +2059,176 @@ class Leads extends AdminController
             return;
         }
     }
+
+    public function get_chat_history_ajax($lead_id)
+    {
+        if (!is_staff_member()) {
+            ajax_access_denied();
+        }
+
+        $chat_items = [];
+
+        // 1. Fetch text notes
+        $this->db->where('rel_id', $lead_id);
+        $this->db->where('rel_type', 'lead');
+        $this->db->order_by('dateadded', 'asc');
+        $notes = $this->db->get(db_prefix() . 'notes')->result_array();
+
+        foreach ($notes as $note) {
+            $staff_name = 'Staff Member';
+            if ($note['addedfrom'] != 0) {
+                $staff = $this->db->select('firstname, lastname')->where('staffid', $note['addedfrom'])->get(db_prefix() . 'staff')->row();
+                if ($staff) {
+                    $staff_name = $staff->firstname . ' ' . $staff->lastname;
+                }
+            }
+            $chat_items[] = [
+                'type' => 'text',
+                'id' => $note['id'],
+                'content' => $note['description'],
+                'dateadded' => $note['dateadded'],
+                'addedfrom' => $note['addedfrom'],
+                'staff_name' => $staff_name
+            ];
+        }
+
+        // 2. Fetch file attachments (media and voice records)
+        $this->db->where('rel_id', $lead_id);
+        $this->db->where('rel_type', 'lead');
+        $this->db->order_by('dateadded', 'asc');
+        $files = $this->db->get(db_prefix() . 'files')->result_array();
+
+        foreach ($files as $file) {
+            $staff_name = 'Staff Member';
+            if (isset($file['staffid']) && $file['staffid'] != 0) {
+                $staff = $this->db->select('firstname, lastname')->where('staffid', $file['staffid'])->get(db_prefix() . 'staff')->row();
+                if ($staff) {
+                    $staff_name = $staff->firstname . ' ' . $staff->lastname;
+                }
+            }
+            $file_url = base_url('uploads/leads/' . $lead_id . '/' . $file['file_name']);
+            $chat_items[] = [
+                'type' => 'media',
+                'id' => $file['id'],
+                'file_name' => $file['file_name'],
+                'filetype' => $file['filetype'],
+                'file_url' => $file_url,
+                'dateadded' => $file['dateadded'],
+                'addedfrom' => isset($file['staffid']) ? $file['staffid'] : 0,
+                'staff_name' => $staff_name
+            ];
+        }
+
+        // Sort all items chronologically by dateadded
+        usort($chat_items, function ($a, $b) {
+            return strcmp($a['dateadded'], $b['dateadded']);
+        });
+
+        echo json_encode(['success' => true, 'history' => $chat_items, 'current_staff_id' => get_staff_user_id()]);
+        return;
+    }
+
+    public function add_chat_note_ajax()
+    {
+        if (!is_staff_member()) {
+            ajax_access_denied();
+        }
+
+        $lead_id = $this->input->post('lead_id');
+        $description = $this->input->post('description');
+
+        if (empty($lead_id) || empty(trim($description))) {
+            echo json_encode(['success' => false, 'message' => 'Lead ID and description are required.']);
+            return;
+        }
+
+        $this->load->model('leads_model');
+        $note_id = $this->leads_model->add_note([
+            'leadid' => $lead_id,
+            'description' => $description
+        ]);
+
+        if ($note_id) {
+            $staff = $this->db->select('firstname, lastname')->where('staffid', get_staff_user_id())->get(db_prefix() . 'staff')->row();
+            echo json_encode([
+                'success' => true,
+                'note' => [
+                    'type' => 'text',
+                    'id' => $note_id,
+                    'content' => $description,
+                    'dateadded' => date('Y-m-d H:i:s'),
+                    'addedfrom' => get_staff_user_id(),
+                    'staff_name' => $staff ? ($staff->firstname . ' ' . $staff->lastname) : 'Staff Member'
+                ]
+            ]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Failed to save note.']);
+        }
+        return;
+    }
+
+    public function upload_chat_media_ajax()
+    {
+        if (!is_staff_member()) {
+            ajax_access_denied();
+        }
+
+        $lead_id = $this->input->post('lead_id');
+        if (empty($lead_id)) {
+            echo json_encode(['success' => false, 'message' => 'Lead ID is required.']);
+            return;
+        }
+
+        if (isset($_FILES['file'])) {
+            $path = get_upload_path_by_type('lead') . $lead_id . '/';
+            if (!file_exists($path)) {
+                mkdir($path, 0755, true);
+                fopen($path . 'index.html', 'w');
+            }
+
+            $config['upload_path']   = $path;
+            $config['allowed_types'] = '*';
+            $config['max_size']      = 51200; // 50MB
+            $config['encrypt_name']  = true;
+
+            $this->load->library('upload', $config);
+
+            if ($this->upload->do_upload('file')) {
+                $upload_data = $this->upload->data();
+                
+                $file_data = [
+                    'rel_id' => $lead_id,
+                    'rel_type' => 'lead',
+                    'file_name' => $upload_data['file_name'],
+                    'filetype' => $upload_data['file_type'],
+                    'dateadded' => date('Y-m-d H:i:s'),
+                    'staffid' => get_staff_user_id()
+                ];
+                $this->db->insert(db_prefix() . 'files', $file_data);
+                $file_id = $this->db->insert_id();
+
+                $staff = $this->db->select('firstname, lastname')->where('staffid', get_staff_user_id())->get(db_prefix() . 'staff')->row();
+
+                echo json_encode([
+                    'success' => true,
+                    'file' => [
+                        'type' => 'media',
+                        'id' => $file_id,
+                        'file_name' => $upload_data['file_name'],
+                        'filetype' => $upload_data['file_type'],
+                        'file_url' => base_url('uploads/leads/' . $lead_id . '/' . $upload_data['file_name']),
+                        'dateadded' => date('Y-m-d H:i:s'),
+                        'addedfrom' => get_staff_user_id(),
+                        'staff_name' => $staff ? ($staff->firstname . ' ' . $staff->lastname) : 'Staff Member'
+                    ]
+                ]);
+            } else {
+                echo json_encode(['success' => false, 'message' => $this->upload->display_errors('', '')]);
+            }
+        } else {
+            echo json_encode(['success' => false, 'message' => 'No file received.']);
+        }
+        return;
+    }
 }
 

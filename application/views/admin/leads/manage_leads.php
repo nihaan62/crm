@@ -280,6 +280,10 @@
                                     'th_attrs' => ['class' => 'toggleable', 'id' => 'th-status'],
                                 ];
                                 $_table_data[] = [
+                                    'name'     => 'Notes',
+                                    'th_attrs' => ['class' => 'toggleable', 'id' => 'th-notes'],
+                                ];
+                                $_table_data[] = [
                                     'name'     => _l('leads_source'),
                                     'th_attrs' => ['class' => 'toggleable', 'id' => 'th-source'],
                                 ];
@@ -703,10 +707,440 @@
             alert_float('warning', 'Please select at least one lead.');
             return;
         }
-        
+
         window.location.href = admin_url + 'cold_wp?ids=' + ids.join(',');
     }
 </script>
-</body>
 
+<!-- Lead Chat Notes Modal -->
+<div class="modal fade" id="leadChatNotesModal" tabindex="-1" role="dialog" aria-labelledby="leadChatNotesModalLabel">
+    <div class="modal-dialog modal-md" role="document" style="max-width: 550px;">
+        <div class="modal-content" style="border-radius: 16px; overflow: hidden; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
+            <!-- Modal Header -->
+            <div class="modal-header" style="background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%); color: white; padding: 16px 20px;">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="color: white; opacity: 0.9; font-size: 24px; margin-top: -2px;">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <h4 class="modal-title" id="leadChatNotesModalLabel" style="font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa fa-comments" style="font-size: 20px;"></i> 
+                    <span>Lead Notes Chat</span>
+                </h4>
+            </div>
+            
+            <!-- Modal Body (Chat Canvas) -->
+            <div class="modal-body" style="background: #f3f4f6; padding: 0; position: relative;">
+                <!-- Chat Bubbles History -->
+                <div class="lead-chat-body" style="height: 380px; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; scroll-behavior: smooth;">
+                    <!-- Loading state -->
+                    <div class="text-center chat-loading-state" style="margin-top: 100px;">
+                        <i class="fa fa-spinner fa-spin fa-2x" style="color: #6366f1;"></i>
+                        <p style="margin-top: 8px; color: #6b7280; font-weight: 600;">Loading chat history...</p>
+                    </div>
+                </div>
+
+                <!-- Voice Recording Overlay -->
+                <div class="voice-recording-overlay" style="display: none; position: absolute; bottom: 0; left: 0; right: 0; background: rgba(255,255,255,0.95); padding: 12px 20px; align-items: center; justify-content: space-between; border-top: 1px solid #e5e7eb; z-index: 10; animation: slideUp 0.2s ease-out;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span class="recording-dot" style="width: 10px; height: 10px; background-color: #ef4444; border-radius: 50%; display: inline-block; animation: blink 1s infinite;"></span>
+                        <span style="font-weight: 600; color: #374151; font-size: 13px;">Recording Audio...</span>
+                        <span class="recording-timer" style="font-weight: 700; color: #ef4444; font-size: 13px;">00:00</span>
+                    </div>
+                    <button type="button" class="btn btn-danger btn-xs stop-recording-btn" style="padding: 4px 10px; border-radius: 20px; font-weight: 600;">
+                        <i class="fa fa-stop"></i> Stop & Send
+                    </button>
+                </div>
+            </div>
+
+            <!-- Modal Footer (Chat Bar) -->
+            <div class="modal-footer" style="padding: 12px 16px; background: white; border-top: 1px solid #e5e7eb; display: flex; align-items: center; gap: 8px;">
+                <!-- Media Upload Button -->
+                <button type="button" class="btn btn-default btn-chat-media" style="padding: 8px 12px; border-radius: 50%; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border: 1px solid #d1d5db; background: #f9fafb; color: #4b5563;" title="Upload Media">
+                    <i class="fa fa-paperclip" style="font-size: 15px;"></i>
+                </button>
+                <input type="file" id="leadChatMediaInput" style="display: none;" />
+
+                <!-- Textarea Message Input -->
+                <textarea id="leadChatMessageInput" rows="1" placeholder="Type notes here..." style="flex-grow: 1; border-radius: 20px; border: 1px solid #d1d5db; padding: 8px 16px; resize: none; max-height: 80px; font-size: 13px; line-height: 1.4; outline: none; background: #f9fafb; transition: all 0.2s;" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"></textarea>
+
+                <!-- Voice Recording Button -->
+                <button type="button" class="btn btn-default btn-chat-mic" style="padding: 8px 12px; border-radius: 50%; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border: 1px solid #d1d5db; background: #f9fafb; color: #ef4444;" title="Record Voice Note">
+                    <i class="fa fa-microphone" style="font-size: 15px;"></i>
+                </button>
+
+                <!-- Send Button -->
+                <button type="button" class="btn btn-primary btn-chat-send" style="padding: 8px 12px; border-radius: 50%; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; background: #4f46e5; border: none; color: white;" title="Send Notes">
+                    <i class="fa fa-paper-plane" style="font-size: 14px;"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Chat Styles */
+.lead-chat-bubble {
+    max-width: 75%;
+    padding: 10px 14px;
+    border-radius: 16px;
+    font-size: 13px;
+    line-height: 1.4;
+    position: relative;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+.lead-chat-bubble.staff {
+    align-self: flex-end;
+    background: #6366f1;
+    color: white;
+    border-bottom-right-radius: 4px;
+}
+.lead-chat-bubble.others {
+    align-self: flex-start;
+    background: white;
+    color: #1f2937;
+    border-bottom-left-radius: 4px;
+    border: 1px solid #e5e7eb;
+}
+.lead-chat-bubble .chat-meta {
+    font-size: 10px;
+    margin-top: 4px;
+    opacity: 0.8;
+    text-align: right;
+    display: block;
+}
+.lead-chat-bubble.others .chat-meta {
+    color: #6b7280;
+}
+.lead-chat-bubble.staff .chat-meta {
+    color: #e0e7ff;
+}
+.lead-chat-bubble .chat-sender {
+    font-weight: 700;
+    font-size: 11px;
+    display: block;
+    margin-bottom: 2px;
+}
+.lead-chat-bubble.staff .chat-sender {
+    color: #c7d2fe;
+}
+.lead-chat-bubble.others .chat-sender {
+    color: #4f46e5;
+}
+/* Audio player wrapper */
+.chat-audio-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+}
+.chat-audio-wrap audio {
+    height: 32px;
+    max-width: 220px;
+    outline: none;
+}
+/* Media preview container */
+.chat-media-preview img {
+    max-width: 100%;
+    border-radius: 8px;
+    margin-top: 4px;
+    max-height: 150px;
+    object-fit: cover;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+@keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+}
+</style>
+
+<script>
+$(function() {
+    var activeChatLeadId = null;
+    var mediaRecorder = null;
+    var audioChunks = [];
+    var recordInterval = null;
+    var recordSeconds = 0;
+
+    // Open chat modal
+    $('body').on('click', '.lead-chat-notes-btn', function() {
+        var btn = $(this);
+        activeChatLeadId = btn.data('lead-id');
+        var name = btn.data('lead-name');
+        
+        $('#leadChatNotesModalLabel span').text('Notes Chat - ' + name);
+        $('#leadChatMessageInput').val('');
+        $('.lead-chat-body').html('<div class="text-center chat-loading-state" style="margin-top: 100px;"><i class="fa fa-spinner fa-spin fa-2x" style="color: #6366f1;"></i><p style="margin-top: 8px; color: #6b7280; font-weight: 600;">Loading chat history...</p></div>');
+        
+        $('#leadChatNotesModal').modal('show');
+        
+        // Fetch chat history
+        $.getJSON(admin_url + 'leads/get_chat_history_ajax/' + activeChatLeadId, function(res) {
+            if (res.success) {
+                var body = $('.lead-chat-body');
+                body.empty();
+                
+                if (res.history.length === 0) {
+                    body.html('<div class="text-center no-history" style="margin-top: 100px; color: #6b7280;"><i class="fa fa-comments-o fa-3x" style="color: #d1d5db; margin-bottom: 12px;"></i><p style="font-weight: 600; font-size:14px;">No notes logged yet.</p><p style="font-size:12px;">Type a message or record a voice note below.</p></div>');
+                } else {
+                    $.each(res.history, function(idx, item) {
+                        appendChatBubble(item, res.current_staff_id);
+                    });
+                    scrollChatToBottom();
+                }
+            } else {
+                alert_float('danger', 'Failed to load notes history.');
+            }
+        });
+    });
+
+    // Helper to format date
+    function formatChatDate(dateStr) {
+        if (!dateStr) return '';
+        var d = new Date(dateStr.replace(/-/g, "/"));
+        var hours = d.getHours();
+        var minutes = d.getMinutes();
+        var ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12; 
+        minutes = minutes < 10 ? '0' + minutes : minutes;
+        return hours + ':' + minutes + ' ' + ampm;
+    }
+
+    // Append chat bubble to UI
+    function appendChatBubble(item, currentStaffId) {
+        $('.no-history').remove();
+        var body = $('.lead-chat-body');
+        var isSelf = (item.addedfrom == currentStaffId);
+        
+        var bubbleClass = isSelf ? 'staff' : 'others';
+        var bubble = $('<div class="lead-chat-bubble ' + bubbleClass + '"></div>');
+        
+        // Add sender name
+        bubble.append('<span class="chat-sender">' + (isSelf ? 'You' : item.staff_name) + '</span>');
+        
+        if (item.type === 'text') {
+            bubble.append('<div class="chat-text-content">' + nl2br(escapeHtml(item.content)) + '</div>');
+        } else {
+            // Media attachment
+            var isAudio = (item.filetype && item.filetype.indexOf('audio') !== -1) || item.file_name.endsWith('.wav') || item.file_name.endsWith('.mp3');
+            var isImage = (item.filetype && item.filetype.indexOf('image') !== -1) || item.file_name.endsWith('.jpg') || item.file_name.endsWith('.jpeg') || item.file_name.endsWith('.png') || item.file_name.endsWith('.gif');
+            
+            if (isAudio) {
+                bubble.append('<div class="chat-audio-wrap"><audio controls src="' + item.file_url + '"></audio></div>');
+            } else if (isImage) {
+                bubble.append('<div class="chat-media-preview"><a href="' + item.file_url + '" target="_blank"><img src="' + item.file_url + '" alt="media"/></a></div>');
+            } else {
+                bubble.append('<div class="chat-file-wrap"><a href="' + item.file_url + '" target="_blank" style="color: inherit; text-decoration: underline; font-weight: 600;"><i class="fa fa-file"></i> ' + escapeHtml(item.file_name) + '</a></div>');
+            }
+        }
+        
+        // Add timestamp
+        bubble.append('<span class="chat-meta">' + formatChatDate(item.dateadded) + '</span>');
+        
+        body.append(bubble);
+    }
+
+    function scrollChatToBottom() {
+        var body = $('.lead-chat-body');
+        if (body.length > 0 && body[0].scrollHeight) {
+            body.scrollTop(body[0].scrollHeight);
+        }
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        return text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    function nl2br(str) {
+        return str.replace(/(?:\r\n|\r|\n)/g, '<br>');
+    }
+
+    // Send Text message notes
+    $('.btn-chat-send').click(function() {
+        var input = $('#leadChatMessageInput');
+        var val = input.val().trim();
+        if (val === '') return;
+        
+        var sendBtn = $(this);
+        sendBtn.prop('disabled', true);
+        
+        $.post(admin_url + 'leads/add_chat_note_ajax', {
+            lead_id: activeChatLeadId,
+            description: val
+        }, function(res) {
+            sendBtn.prop('disabled', false);
+            if (res.success) {
+                input.val('');
+                input.css('height', ''); // reset height
+                appendChatBubble(res.note, res.note.addedfrom);
+                scrollChatToBottom();
+                updateTableRowNotesCount(activeChatLeadId);
+            } else {
+                alert_float('danger', res.message || 'Failed to send note.');
+            }
+        }, 'json');
+    });
+
+    // Enter key to send message
+    $('#leadChatMessageInput').keydown(function(e) {
+        if (e.which === 13 && !e.shiftKey) {
+            e.preventDefault();
+            $('.btn-chat-send').click();
+        }
+    });
+
+    // File attachments upload
+    $('.btn-chat-media').click(function() {
+        $('#leadChatMediaInput').click();
+    });
+
+    $('#leadChatMediaInput').change(function() {
+        var fileInput = this;
+        if (fileInput.files.length === 0) return;
+        
+        var file = fileInput.files[0];
+        var formData = new FormData();
+        formData.append('lead_id', activeChatLeadId);
+        formData.append('file', file);
+        
+        var body = $('.lead-chat-body');
+        var placeholder = $('<div class="lead-chat-bubble staff chat-uploading-placeholder" style="opacity: 0.7;"><i class="fa fa-spinner fa-spin"></i> Uploading file...</div>');
+        body.append(placeholder);
+        scrollChatToBottom();
+
+        $.ajax({
+            url: admin_url + 'leads/upload_chat_media_ajax',
+            type: 'POST',
+            data: formData,
+            contentType: false,
+            processData: false,
+            dataType: 'json',
+            success: function(res) {
+                placeholder.remove();
+                fileInput.value = ''; 
+                if (res.success) {
+                    appendChatBubble(res.file, res.file.addedfrom);
+                    scrollChatToBottom();
+                    updateTableRowNotesCount(activeChatLeadId);
+                } else {
+                    alert_float('danger', res.message || 'Failed to upload media file.');
+                }
+            },
+            error: function() {
+                placeholder.remove();
+                fileInput.value = '';
+                alert_float('danger', 'Error uploading file.');
+            }
+        });
+    });
+
+    function updateTableRowNotesCount(leadId) {
+        var rowBtn = $('.lead-chat-notes-btn[data-lead-id="' + leadId + '"]');
+        if (rowBtn.length > 0) {
+            var badge = rowBtn.find('.badge');
+            var currentCount = badge.length > 0 ? parseInt(badge.text()) : 0;
+            var newCount = currentCount + 1;
+            
+            if (badge.length > 0) {
+                badge.text(newCount);
+            } else {
+                rowBtn.append(' <span class="badge" style="background: #6366f1; color: white; padding: 2px 6px; font-size: 10px; border-radius: 10px; margin-left: 2px;">' + newCount + '</span>');
+            }
+        }
+    }
+
+    // Audio Voice Note Recording
+    $('.btn-chat-mic').click(function() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            alert_float('warning', 'Your browser does not support audio recording.');
+            return;
+        }
+
+        navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
+            audioChunks = [];
+            mediaRecorder = new MediaRecorder(stream);
+            
+            mediaRecorder.ondataavailable = function(e) {
+                audioChunks.push(e.data);
+            };
+
+            mediaRecorder.onstop = function() {
+                var audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                var audioFile = new File([audioBlob], "voice_note_" + new Date().getTime() + ".wav", { type: "audio/wav" });
+                
+                var formData = new FormData();
+                formData.append('lead_id', activeChatLeadId);
+                formData.append('file', audioFile);
+                
+                var body = $('.lead-chat-body');
+                var placeholder = $('<div class="lead-chat-bubble staff chat-uploading-placeholder" style="opacity: 0.7;"><i class="fa fa-spinner fa-spin"></i> Uploading voice note...</div>');
+                body.append(placeholder);
+                scrollChatToBottom();
+
+                $.ajax({
+                    url: admin_url + 'leads/upload_chat_media_ajax',
+                    type: 'POST',
+                    data: formData,
+                    contentType: false,
+                    processData: false,
+                    dataType: 'json',
+                    success: function(res) {
+                        placeholder.remove();
+                        if (res.success) {
+                            appendChatBubble(res.file, res.file.addedfrom);
+                            scrollChatToBottom();
+                            updateTableRowNotesCount(activeChatLeadId);
+                        } else {
+                            alert_float('danger', res.message || 'Failed to save voice note.');
+                        }
+                    },
+                    error: function() {
+                        placeholder.remove();
+                        alert_float('danger', 'Error uploading voice note.');
+                    }
+                });
+
+                stream.getTracks().forEach(track => track.stop());
+            };
+
+            mediaRecorder.start();
+            $('.voice-recording-overlay').css('display', 'flex');
+            
+            recordSeconds = 0;
+            $('.recording-timer').text('00:00');
+            clearInterval(recordInterval);
+            recordInterval = setInterval(function() {
+                recordSeconds++;
+                var m = Math.floor(recordSeconds / 60);
+                var s = recordSeconds % 60;
+                m = m < 10 ? '0' + m : m;
+                s = s < 10 ? '0' + s : s;
+                $('.recording-timer').text(m + ':' + s);
+            }, 1000);
+
+        }).catch(function(err) {
+            console.error(err);
+            alert_float('danger', 'Microphone access denied or not available.');
+        });
+    });
+
+    $('.stop-recording-btn').click(function() {
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop();
+            clearInterval(recordInterval);
+            $('.voice-recording-overlay').hide();
+        }
+    });
+});
+</script>
+</body>
 </html>
