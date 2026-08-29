@@ -8,3 +8,6 @@
 *.log
 /node_modules/
 /application/config/app-config.php
+/application/logs/log-*.php
+/application/logs/*.php
+/application/logs/log-*.html
