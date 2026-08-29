@@ -146,6 +146,8 @@ return App_table::find('leads')
                 array_push($where, 'AND lost = 0 AND junk = 0');
             } elseif ($category === 'ads_wp') {
                 array_push($where, 'AND ' . db_prefix() . 'leads.source = (SELECT id FROM ' . db_prefix() . 'leads_sources WHERE name = "Ads WhatsApp" LIMIT 1)');
+            } elseif ($category === 'ads_excel_list') {
+                array_push($where, 'AND ' . db_prefix() . 'leads.source = (SELECT id FROM ' . db_prefix() . 'leads_sources WHERE name = "Ads Excel List" LIMIT 1)');
             }
         }
 

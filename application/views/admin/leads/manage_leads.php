@@ -622,52 +622,35 @@
         function handleLeadCategoryChange() {
             var category = $('select[name="view_lead_category"]').val();
             
+            // Toggle the Open Google Sheet action button
             if (category === 'ads_excel_list') {
-                // Hide normal leads, show excel container
-                $('#normal-leads-container').hide();
-                $('.leads-overview').hide();
-                $('#excel-leads-container').show();
-
-                // Show excel action button, hide new lead button
                 $('#excel-open-sheet-btn').show();
-                $('#new-lead-btn').hide();
-                
-                // Fetch the excel view via AJAX if not already loaded or reload it
-                $('#excel-leads-content').html('<div class="text-center" style="padding: 40px;"><i class="fa-solid fa-circle-notch fa-spin fa-2x" style="color: #107C41;"></i><p style="margin-top: 10px; font-weight: 600; color: #666;">Loading Excel Leads...</p></div>');
-                
-                $.get(admin_url + 'ads_excel_list', function(html) {
-                    var content = $(html).find('.content-inner').html() || $(html).find('#wrapper').html() || html;
-                    $('#excel-leads-content').html(content);
-                }).fail(function() {
-                    $('#excel-leads-content').html('<div class="alert alert-danger text-center">Failed to load Ads Excel List.</div>');
-                });
             } else {
-                // Hide excel view, show normal leads
-                $('#excel-leads-container').hide();
-                $('.leads-overview').show();
-                $('#normal-leads-container').show();
-
-                // Hide excel action button, show new lead button
                 $('#excel-open-sheet-btn').hide();
-                $('#new-lead-btn').show();
-                
-                // If we are on Kanban view
-                if ($('#kan-ban').length > 0) {
-                    var hiddenInput = $('#kanban-params input[name="lead_category"]');
-                    if (hiddenInput.length === 0) {
-                        hiddenInput = $('<input>').attr({
-                            type: 'hidden',
-                            name: 'lead_category'
-                        });
-                        $('#kanban-params').append(hiddenInput);
-                    }
-                    hiddenInput.val(category);
-                    leads_kanban();
-                } else {
-                    // If we are on List view (DataTables)
-                    if ($.fn.DataTable.isDataTable('.table-leads')) {
-                        $('.table-leads').DataTable().ajax.reload();
-                    }
+            }
+
+            // Always display standard leads layout (excel AJAX sub-view is no longer swapped in)
+            $('#excel-leads-container').hide();
+            $('.leads-overview').show();
+            $('#normal-leads-container').show();
+            $('#new-lead-btn').show();
+            
+            // If we are on Kanban view
+            if ($('#kan-ban').length > 0) {
+                var hiddenInput = $('#kanban-params input[name="lead_category"]');
+                if (hiddenInput.length === 0) {
+                    hiddenInput = $('<input>').attr({
+                        type: 'hidden',
+                        name: 'lead_category'
+                    });
+                    $('#kanban-params').append(hiddenInput);
+                }
+                hiddenInput.val(category);
+                leads_kanban();
+            } else {
+                // If we are on List view (DataTables)
+                if ($.fn.DataTable.isDataTable('.table-leads')) {
+                    $('.table-leads').DataTable().ajax.reload();
                 }
             }
         }
