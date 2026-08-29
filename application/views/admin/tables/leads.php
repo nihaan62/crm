@@ -106,6 +106,7 @@ return App_table::find('leads')
             '(SELECT GROUP_CONCAT(name SEPARATOR ",") FROM ' . db_prefix() . 'taggables JOIN ' . db_prefix() . 'tags ON ' . db_prefix() . 'taggables.tag_id = ' . db_prefix() . 'tags.id WHERE rel_id = ' . db_prefix() . 'leads.id and rel_type="lead" ORDER by tag_order ASC LIMIT 1) as tags',
             'firstname as assigned_firstname',
             db_prefix() . 'leads_status.name as status_name',
+            db_prefix() . 'leads.description as description',
             db_prefix() . 'leads_sources.name as source_name',
             'lastcontact',
             'dateadded',
@@ -298,6 +299,12 @@ return App_table::find('leads')
             }
 
             $row[] = $outputStatus;
+
+            // Notes inline editable column
+            $row[] = '<div style="position:relative; min-width: 180px;">
+                <textarea class="lead-notes-textarea form-control" data-id="' . $aRow['id'] . '" style="width: 100%; border: 1px solid #ccd0d4; border-radius: 4px; padding: 4px 8px; font-size: 12.5px; resize: vertical; min-height: 42px; line-height: 1.4;" placeholder="Add notes here...">' . e($aRow['description']) . '</textarea>
+                <span class="save-indicator text-success" style="display:none; position:absolute; bottom:4px; right:8px; font-size:10px;"><i class="fa fa-check"></i> Saved</span>
+            </div>';
 
             $row[] = e($aRow['source_name']);
 

@@ -261,7 +261,25 @@ class Leads extends AdminController
 
             $this->db->insert(db_prefix() . 'leads', $lead_data);
             $existing_phones[$pKey] = true;
+    }
+
+    public function update_lead_description_ajax()
+    {
+        if (!is_staff_member()) {
+            ajax_access_denied();
         }
+
+        $lead_id = $this->input->post('lead_id');
+        $description = $this->input->post('description');
+
+        if ($lead_id) {
+            $this->db->where('id', $lead_id);
+            $this->db->update(db_prefix() . 'leads', ['description' => $description]);
+            echo json_encode(['success' => true]);
+        } else {
+            echo json_encode(['success' => false]);
+        }
+        exit;
     }
 
     public function table()

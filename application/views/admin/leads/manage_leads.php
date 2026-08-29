@@ -280,6 +280,10 @@
                                     'th_attrs' => ['class' => 'toggleable', 'id' => 'th-status'],
                                 ];
                                 $_table_data[] = [
+                                    'name'     => 'Notes',
+                                    'th_attrs' => ['class' => 'toggleable', 'id' => 'th-notes', 'style' => 'min-width: 200px;'],
+                                ];
+                                $_table_data[] = [
                                     'name'     => _l('leads_source'),
                                     'th_attrs' => ['class' => 'toggleable', 'id' => 'th-source'],
                                 ];
@@ -686,6 +690,30 @@
                     $('.table-leads').DataTable().ajax.reload();
                 }
             }
+        });
+
+        // Listen to change/blur on the lead notes textarea to save automatically via AJAX
+        $('body').on('blur', '.lead-notes-textarea', function() {
+            var $textarea = $(this);
+            var lead_id = $textarea.data('id');
+            var description = $textarea.val();
+            var $indicator = $textarea.siblings('.save-indicator');
+
+            $.ajax({
+                url: admin_url + 'leads/update_lead_description_ajax',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    lead_id: lead_id,
+                    description: description,
+                    [csrfData.formattedName]: csrfData.hash
+                },
+                success: function(response) {
+                    if (response && response.success) {
+                        $indicator.fadeIn().delay(1500).fadeOut();
+                    }
+                }
+            });
         });
     });
 
