@@ -88,5 +88,9 @@
 		<?php render_yes_no_option('rtl_support_client', 'settings_rtl_support_client'); ?>
 		<hr />
 		<?= render_input('settings[allowed_files]', 'settings_allowed_upload_file_types', get_option('allowed_files')); ?>
+		<hr />
+		<h4 class="bold tw-mt-4 tw-mb-3"><i class="fa-solid fa-file-excel text-success me-2"></i> Ads Excel Settings</h4>
+		<?= render_input('settings[excel_sheet_url]', 'Excel Google Sheet Link / URL', get_option('excel_sheet_url', 'https://docs.google.com/spreadsheets/d/17hEUmsz8Q8Q32KDKO7qi0uTdhAXIDz7vRvPmkMS7Yv8/edit?usp=sharing')); ?>
+		<?= render_input('settings[excel_lead_count]', 'Excel Lead Display Count', get_option('excel_lead_count', '30'), 'number'); ?>
 	</div>
 </div>

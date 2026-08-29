@@ -48,8 +48,6 @@
 </style>
 
 <div id="wrapper">
-    <?php init_tail(); ?>
-
     <div class="content-inner">
         <div class="container-fluid">
 
@@ -164,7 +162,8 @@
                                 </tr>
                                 <?php else: ?>
                                 <?php $i = 1; foreach ($leads as $lead): ?>
-                                <tr data-name="<?= e(strtolower($lead['name'])); ?>"
+                                <tr data-id="<?= $lead['id']; ?>"
+                                    data-name="<?= e(strtolower($lead['name'])); ?>"
                                     data-status="<?= e(strtolower($lead['status_name'] ?? '')); ?>">
                                     <td class="text-muted"><?= $i++; ?></td>
                                     <td>
@@ -292,3 +291,4 @@ $(function() {
     }
 });
 </script>
+<?php init_tail(); ?>

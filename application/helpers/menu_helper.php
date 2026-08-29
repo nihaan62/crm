@@ -246,6 +246,13 @@ function app_init_admin_sidebar_menu_items()
             'position' => 51,
             'icon'     => 'fa-brands fa-whatsapp',
         ]);
+
+        $CI->app_menu->add_sidebar_menu_item('ads-excel-list', [
+            'name'     => 'Ads Excel list',
+            'href'     => admin_url('ads_excel_list'),
+            'position' => 52,
+            'icon'     => 'fa-solid fa-file-excel',
+        ]);
     }
 
     if ((staff_can('view',  'estimate_request') || staff_can('view_own',  'estimate_request'))) {
