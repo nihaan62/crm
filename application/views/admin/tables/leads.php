@@ -300,8 +300,8 @@ return App_table::find('leads')
             $row[] = $outputStatus;
 
             // Get total notes & files count for this lead
-            $total_notes = total_rows(db_prefix() . 'notes', ['rel_id' => $aRow['id'], 'rel_type' => 'lead']);
-            $total_files = total_rows(db_prefix() . 'files', ['rel_id' => $aRow['id'], 'rel_type' => 'lead']);
+            $total_notes = total_rows('notes', ['rel_id' => $aRow['id'], 'rel_type' => 'lead']);
+            $total_files = total_rows('files', ['rel_id' => $aRow['id'], 'rel_type' => 'lead']);
             $total_chat_items = $total_notes + $total_files;
 
             $notesBtn = '<button class="btn btn-default btn-xs lead-chat-notes-btn" data-lead-id="' . $aRow['id'] . '" data-lead-name="' . e($aRow['name']) . '" style="padding: 3px 8px; border-radius: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; border: 1px solid #d1d5db; background: #f9fafb; color: #4b5563;">';
