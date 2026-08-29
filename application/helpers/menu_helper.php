@@ -207,15 +207,50 @@ function app_init_admin_sidebar_menu_items()
                 'badge'    => [],
             ]);
         }
-    }
 
-    if (staff_can('view', 'cold_wp_messages')) {
-        $CI->app_menu->add_sidebar_menu_item('cold-wp', [
-            'name'     => 'Cold WP Messages',
-            'href'     => admin_url('cold_wp'),
-            'position' => 47,
-            'icon'     => 'fa-brands fa-whatsapp',
-        ]);
+        if (staff_can('view', 'cold_wp_messages')) {
+            $CI->app_menu->add_sidebar_children_item('leads', [
+                'slug'     => 'leads-cold-wp',
+                'name'     => 'Cold WP Messages',
+                'href'     => admin_url('cold_wp'),
+                'position' => 15,
+                'badge'    => [],
+            ]);
+        }
+
+        if (is_admin()) {
+            $CI->app_menu->add_sidebar_children_item('leads', [
+                'slug'     => 'leads-loans-ads',
+                'name'     => 'Loans ADS Lead',
+                'href'     => admin_url('digital_marketing/loans'),
+                'position' => 20,
+                'badge'    => [],
+            ]);
+
+            $CI->app_menu->add_sidebar_children_item('leads', [
+                'slug'     => 'leads-it-lds',
+                'name'     => 'IT LDS Lead',
+                'href'     => admin_url('digital_marketing/it'),
+                'position' => 25,
+                'badge'    => [],
+            ]);
+
+            $CI->app_menu->add_sidebar_children_item('leads', [
+                'slug'     => 'leads-ads-wp',
+                'name'     => 'Ads WhatsApp Leads',
+                'href'     => admin_url('ads_wp_leads'),
+                'position' => 30,
+                'badge'    => [],
+            ]);
+
+            $CI->app_menu->add_sidebar_children_item('leads', [
+                'slug'     => 'leads-ads-excel',
+                'name'     => 'Ads Excel List',
+                'href'     => admin_url('ads_excel_list'),
+                'position' => 35,
+                'badge'    => [],
+            ]);
+        }
     }
 
     $CI->app_menu->add_sidebar_menu_item('leaves', [
@@ -224,36 +259,6 @@ function app_init_admin_sidebar_menu_items()
         'position' => 48,
         'icon'     => 'fa-regular fa-calendar-times',
     ]);
-
-    if (is_admin()) {
-        $CI->app_menu->add_sidebar_menu_item('loans-ads-lead', [
-            'name'     => 'Loans ADS lead',
-            'href'     => admin_url('digital_marketing/loans'),
-            'position' => 49,
-            'icon'     => 'fa fa-dollar',
-        ]);
-
-        $CI->app_menu->add_sidebar_menu_item('it-lds-lead', [
-            'name'     => 'IT LDS lead',
-            'href'     => admin_url('digital_marketing/it'),
-            'position' => 50,
-            'icon'     => 'fa fa-code',
-        ]);
-
-        $CI->app_menu->add_sidebar_menu_item('ads-wp-leads', [
-            'name'     => 'Ads WhatsApp Leads',
-            'href'     => admin_url('ads_wp_leads'),
-            'position' => 51,
-            'icon'     => 'fa-brands fa-whatsapp',
-        ]);
-
-        $CI->app_menu->add_sidebar_menu_item('ads-excel-list', [
-            'name'     => 'Ads Excel list',
-            'href'     => admin_url('ads_excel_list'),
-            'position' => 52,
-            'icon'     => 'fa-solid fa-file-excel',
-        ]);
-    }
 
     if ((staff_can('view',  'estimate_request') || staff_can('view_own',  'estimate_request'))) {
         $CI->app_menu->add_sidebar_menu_item('estimate_request', [
