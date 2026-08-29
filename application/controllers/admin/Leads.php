@@ -335,6 +335,22 @@ class Leads extends AdminController
         exit;
     }
 
+    public function view_logs()
+    {
+        if (!is_staff_member()) {
+            access_denied('Leads Logs');
+        }
+        
+        $log_file = APPPATH . 'logs/log-' . date('Y-m-d') . '.php';
+        echo "<h1>Remote Server logs: " . basename($log_file) . "</h1>";
+        if (file_exists($log_file)) {
+            echo "<pre>" . htmlspecialchars(file_get_contents($log_file)) . "</pre>";
+        } else {
+            echo "<p>No log file found for today.</p>";
+        }
+        exit;
+    }
+
     public function table()
     {
         if (!is_staff_member()) {
