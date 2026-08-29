@@ -74,17 +74,33 @@ class Leads extends AdminController
 
     private function sync_excel_leads()
     {
-        $last_sync = get_option('last_excel_sync_time');
-        if ($last_sync && (time() - (int)$last_sync) < 300) {
-            return; // Only sync once every 5 minutes
-        }
-        update_option('last_excel_sync_time', time());
-
-        $sheet_url = get_option('excel_sheet_url') ?: 'https://docs.google.com/spreadsheets/d/17hEUmsz8Q8Q32KDKO7qi0uTdhAXIDz7vRvPmkMS7Yv8/export?format=csv';
+        $this->db->where('name', 'Ads Excel List');
+        $source = $this->db->get(db_prefix() . 'leads_sources')->row();
         
+        $total_existing = 0;
+        if ($source) {
+            $total_existing = total_rows(db_prefix() . 'leads', ['source' => $source->id]);
+        }
+
+        $last_sync = get_option('last_excel_sync_time');
+        // Force synchronization if we have 0 leads in the DB under this source
+        if ($total_existing > 0 && $last_sync && (time() - (int)$last_sync) < 300) {
+            return;
+        }
+
+        $sheet_url = get_option('excel_sheet_url') ?: 'https://docs.google.com/spreadsheets/d/17hEUmsz8Q8Q32KDKO7qi0uTdhAXIDz7vRvPmkMS7Yv8/edit?usp=sharing';
+        
+        // Convert sharing link to export CSV link
+        $csv_url = $sheet_url;
+        if (strpos($sheet_url, '/edit') !== false) {
+            $csv_url = preg_replace('/\/edit.*/', '/export?format=csv', $sheet_url);
+        } elseif (strpos($sheet_url, '/pubhtml') !== false) {
+            $csv_url = str_replace('/pubhtml', '/pub?output=csv', $sheet_url);
+        }
+
         $context = stream_context_create([
             'http' => [
-                'timeout' => 3,
+                'timeout' => 5,
                 'follow_location' => true
             ],
             'ssl' => [
@@ -93,7 +109,7 @@ class Leads extends AdminController
             ]
         ]);
         
-        $csvContent = @file_get_contents($sheet_url, false, $context);
+        $csvContent = @file_get_contents($csv_url, false, $context);
         if (empty($csvContent)) {
             return;
         }
@@ -101,6 +117,9 @@ class Leads extends AdminController
         if (strpos($csvContent, '<!DOCTYPE html>') !== false || strpos($csvContent, '<html') !== false) {
             return;
         }
+
+        // Successfully fetched valid CSV content, so cache/update the sync time
+        update_option('last_excel_sync_time', time());
 
         $lines = explode("\n", str_replace("\r", "", $csvContent));
         if (count($lines) < 2) {
