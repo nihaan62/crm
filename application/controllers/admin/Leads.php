@@ -44,6 +44,9 @@ class Leads extends AdminController
             access_denied('Leads');
         }
 
+        // Automatically sync Excel leads from Google Sheets to database
+        $this->sync_excel_leads();
+
         $data['switch_kanban'] = true;
 
         if ($this->session->userdata('leads_kanban_view') == 'true') {
@@ -67,6 +70,171 @@ class Leads extends AdminController
             $this->session->userdata('leads_kanban_view') == 'true';
 
         $this->load->view('admin/leads/manage_leads', $data);
+    }
+
+    private function sync_excel_leads()
+    {
+        $last_sync = get_option('last_excel_sync_time');
+        if ($last_sync && (time() - (int)$last_sync) < 300) {
+            return; // Only sync once every 5 minutes
+        }
+        update_option('last_excel_sync_time', time());
+
+        $sheet_url = get_option('excel_sheet_url') ?: 'https://docs.google.com/spreadsheets/d/17hEUmsz8Q8Q32KDKO7qi0uTdhAXIDz7vRvPmkMS7Yv8/export?format=csv';
+        
+        $context = stream_context_create([
+            'http' => [
+                'timeout' => 3,
+                'follow_location' => true
+            ],
+            'ssl' => [
+                'verify_peer' => false,
+                'verify_peer_name' => false
+            ]
+        ]);
+        
+        $csvContent = @file_get_contents($sheet_url, false, $context);
+        if (empty($csvContent)) {
+            return;
+        }
+
+        if (strpos($csvContent, '<!DOCTYPE html>') !== false || strpos($csvContent, '<html') !== false) {
+            return;
+        }
+
+        $lines = explode("\n", str_replace("\r", "", $csvContent));
+        if (count($lines) < 2) {
+            return;
+        }
+
+        $headerLineIndex = -1;
+        foreach ($lines as $idx => $line) {
+            $rowValues = str_getcsv($line);
+            if (in_array('created_time', $rowValues) || in_array('form_name', $rowValues)) {
+                $headerLineIndex = $idx;
+                break;
+            }
+        }
+
+        if ($headerLineIndex === -1) {
+            $headerLineIndex = 0;
+        }
+
+        $rawHeaders = str_getcsv($lines[$headerLineIndex]);
+        
+        $phoneIdx = -1;
+        $nameIdx = -1;
+        $emailIdx = -1;
+        $valueIdx = -1;
+
+        foreach ($rawHeaders as $idx => $h) {
+            $hLower = strtolower(trim($h));
+            if (strpos($hLower, 'phone') !== false) {
+                $phoneIdx = $idx;
+            } elseif (strpos($hLower, 'name') !== false || $hLower === 'full_name') {
+                $nameIdx = $idx;
+            } elseif (strpos($hLower, 'email') !== false) {
+                $emailIdx = $idx;
+            } elseif (strpos($hLower, 'value') !== false || strpos($hLower, 'funding') !== false || strpos($hLower, 'amount') !== false) {
+                $valueIdx = $idx;
+            }
+        }
+
+        $this->db->where('name', 'Ads Excel List');
+        $source = $this->db->get(db_prefix() . 'leads_sources')->row();
+        if (!$source) {
+            $this->db->insert(db_prefix() . 'leads_sources', ['name' => 'Ads Excel List']);
+            $source_id = $this->db->insert_id();
+        } else {
+            $source_id = $source->id;
+        }
+
+        $db_leads = $this->db->select('phonenumber')->get(db_prefix() . 'leads')->result_array();
+        $existing_phones = [];
+        foreach ($db_leads as $dl) {
+            $clean = preg_replace('/[^0-9]/', '', $dl['phonenumber']);
+            if (strlen($clean) >= 10) {
+                $existing_phones[substr($clean, -10)] = true;
+            }
+        }
+
+        for ($i = 0; $i < count($lines); $i++) {
+            if ($i === $headerLineIndex) {
+                continue;
+            }
+            if (trim($lines[$i]) === '') {
+                continue;
+            }
+            $rowValues = str_getcsv($lines[$i]);
+            if (empty(array_filter($rowValues))) {
+                continue;
+            }
+
+            if (isset($rowValues[0]) && (trim($rowValues[0]) === 'id' || trim($rowValues[0]) === 'created_time')) {
+                continue;
+            }
+            if (isset($rowValues[1]) && trim($rowValues[1]) === 'created_time') {
+                continue;
+            }
+
+            $phone = ($phoneIdx !== -1 && isset($rowValues[$phoneIdx])) ? trim($rowValues[$phoneIdx]) : '';
+            if (empty($phone)) {
+                continue;
+            }
+
+            $pClean = preg_replace('/[^0-9]/', '', $phone);
+            if (strlen($pClean) < 10) {
+                continue;
+            }
+
+            $pKey = substr($pClean, -10);
+            if (isset($existing_phones[$pKey])) {
+                continue;
+            }
+
+            $name = ($nameIdx !== -1 && isset($rowValues[$nameIdx])) ? trim($rowValues[$nameIdx]) : 'Excel Lead';
+            $email = ($emailIdx !== -1 && isset($rowValues[$emailIdx])) ? trim($rowValues[$emailIdx]) : '';
+            
+            $lead_value = 0;
+            if ($valueIdx !== -1 && isset($rowValues[$valueIdx])) {
+                $valStr = trim($rowValues[$valueIdx]);
+                if (stripos($valStr, 'lakh') !== false) {
+                    preg_match_all('!\d+!', $valStr, $matches);
+                    if (!empty($matches[0])) {
+                        $lead_value = (float)$matches[0][0] * 100000;
+                    }
+                } else {
+                    $lead_value = (float)preg_replace('/[^0-9.]/', '', $valStr);
+                }
+            }
+
+            $description = '';
+            foreach ($rawHeaders as $idx => $h) {
+                if (in_array($idx, [$phoneIdx, $nameIdx, $emailIdx])) {
+                    continue;
+                }
+                $hTrim = trim($h);
+                if (!empty($hTrim) && isset($rowValues[$idx]) && !empty(trim($rowValues[$idx]))) {
+                    $cleanKey = ucwords(str_replace(['_', '?', '.'], [' ', '', ''], $hTrim));
+                    $description .= $cleanKey . ': ' . trim($rowValues[$idx]) . "\n";
+                }
+            }
+
+            $lead_data = [
+                'name'        => $name,
+                'phonenumber' => $pClean,
+                'email'       => $email,
+                'lead_value'  => $lead_value,
+                'description' => trim($description),
+                'source'      => $source_id,
+                'status'      => 1,
+                'assigned'    => 1,
+                'dateadded'   => date('Y-m-d H:i:s')
+            ];
+
+            $this->db->insert(db_prefix() . 'leads', $lead_data);
+            $existing_phones[$pKey] = true;
+        }
     }
 
     public function table()

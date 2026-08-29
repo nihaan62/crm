@@ -230,7 +230,10 @@ return App_table::find('leads')
 
             $base_currency = get_base_currency();
             if (!empty($aRow['lead_value']) && $aRow['lead_value'] > 0) {
-                $row[] = '<span class="tw-font-medium">' . e(app_format_money($aRow['lead_value'], $base_currency->id)) . '</span>';
+                $formatted_val = app_format_money($aRow['lead_value'], $base_currency->id);
+                // Fix broken UTF-8 encoding of the Rupee symbol
+                $formatted_val = str_replace('â‚¹', '₹', $formatted_val);
+                $row[] = '<span class="tw-font-medium">' . $formatted_val . '</span>';
             } else {
                 $row[] = '<span class="text-muted">—</span>';
             }
