@@ -62,10 +62,6 @@ class LeadsKanban extends AbstractKanban
             } elseif ($category === 'cold_wp') {
                 $this->ci->db->where('lost', 0);
                 $this->ci->db->where('junk', 0);
-            } elseif ($category === 'loans_ads') {
-                $this->ci->db->where(db_prefix() . 'leads.source = (SELECT id FROM ' . db_prefix() . 'leads_sources WHERE name = "Loans ADS" LIMIT 1)');
-            } elseif ($category === 'it_lds') {
-                $this->ci->db->where(db_prefix() . 'leads.source = (SELECT id FROM ' . db_prefix() . 'leads_sources WHERE name = "IT LDS" LIMIT 1)');
             } elseif ($category === 'ads_wp') {
                 $this->ci->db->where(db_prefix() . 'leads.source = (SELECT id FROM ' . db_prefix() . 'leads_sources WHERE name = "Ads WhatsApp" LIMIT 1)');
             }

@@ -82,8 +82,6 @@
                                     <option value="" <?= ($selected_cat === '') ? 'selected' : ''; ?> data-subtext="Default">All Leads</option>
                                     <option value="converted" <?= ($selected_cat === 'converted') ? 'selected' : ''; ?>>Converted Leads</option>
                                     <option value="cold_wp" <?= ($selected_cat === 'cold_wp') ? 'selected' : ''; ?>>Cold WP Messages</option>
-                                    <option value="loans_ads" <?= ($selected_cat === 'loans_ads') ? 'selected' : ''; ?>>Loans ADS Lead</option>
-                                    <option value="it_lds" <?= ($selected_cat === 'it_lds') ? 'selected' : ''; ?>>IT LDS Lead</option>
                                     <option value="ads_wp" <?= ($selected_cat === 'ads_wp') ? 'selected' : ''; ?>>Ads WhatsApp Leads</option>
                                     <option value="ads_excel_list" <?= ($selected_cat === 'ads_excel_list') ? 'selected' : ''; ?>>Ads Excel List</option>
                                 </select>

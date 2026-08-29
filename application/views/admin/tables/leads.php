@@ -144,10 +144,6 @@ return App_table::find('leads')
                 array_push($where, 'AND ' . db_prefix() . 'leads.id IN (SELECT leadid FROM ' . db_prefix() . 'clients)');
             } elseif ($category === 'cold_wp') {
                 array_push($where, 'AND lost = 0 AND junk = 0');
-            } elseif ($category === 'loans_ads') {
-                array_push($where, 'AND ' . db_prefix() . 'leads.source = (SELECT id FROM ' . db_prefix() . 'leads_sources WHERE name = "Loans ADS" LIMIT 1)');
-            } elseif ($category === 'it_lds') {
-                array_push($where, 'AND ' . db_prefix() . 'leads.source = (SELECT id FROM ' . db_prefix() . 'leads_sources WHERE name = "IT LDS" LIMIT 1)');
             } elseif ($category === 'ads_wp') {
                 array_push($where, 'AND ' . db_prefix() . 'leads.source = (SELECT id FROM ' . db_prefix() . 'leads_sources WHERE name = "Ads WhatsApp" LIMIT 1)');
             }

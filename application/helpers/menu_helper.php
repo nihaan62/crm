@@ -219,21 +219,6 @@ function app_init_admin_sidebar_menu_items()
         }
 
         if (is_admin()) {
-            $CI->app_menu->add_sidebar_children_item('leads', [
-                'slug'     => 'leads-loans-ads',
-                'name'     => 'Loans ADS Lead',
-                'href'     => admin_url('leads?category=loans_ads'),
-                'position' => 20,
-                'badge'    => [],
-            ]);
-
-            $CI->app_menu->add_sidebar_children_item('leads', [
-                'slug'     => 'leads-it-lds',
-                'name'     => 'IT LDS Lead',
-                'href'     => admin_url('leads?category=it_lds'),
-                'position' => 25,
-                'badge'    => [],
-            ]);
 
             $CI->app_menu->add_sidebar_children_item('leads', [
                 'slug'     => 'leads-ads-wp',
