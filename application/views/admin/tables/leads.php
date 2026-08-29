@@ -83,12 +83,11 @@ if (isset($consent_purposes)) {
 
 return App_table::find('leads')
     ->outputUsing(function ($params) use ($statuses) {
-        try {
-            extract($params);
+        extract($params);
 
-            $lockAfterConvert      = get_option('lead_lock_after_convert_to_customer');
-            $has_permission_delete = staff_can('delete', 'leads');
-            $custom_fields         = get_table_custom_fields('leads');
+        $lockAfterConvert      = get_option('lead_lock_after_convert_to_customer');
+        $has_permission_delete = staff_can('delete', 'leads');
+        $custom_fields         = get_table_custom_fields('leads');
         $consentLeads          = get_option('gdpr_enable_consent_for_leads');
 
         $aColumns = [
@@ -300,19 +299,6 @@ return App_table::find('leads')
 
             $row[] = $outputStatus;
 
-            // Get total notes & files count for this lead
-            $total_notes = total_rows('notes', ['rel_id' => $aRow['id'], 'rel_type' => 'lead']);
-            $total_files = total_rows('files', ['rel_id' => $aRow['id'], 'rel_type' => 'lead']);
-            $total_chat_items = $total_notes + $total_files;
-
-            $notesBtn = '<button class="btn btn-default btn-xs lead-chat-notes-btn" data-lead-id="' . $aRow['id'] . '" data-lead-name="' . e($aRow['name']) . '" style="padding: 3px 8px; border-radius: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; border: 1px solid #d1d5db; background: #f9fafb; color: #4b5563;">';
-            $notesBtn .= '<i class="fa fa-commenting-o" style="color: #6366f1; font-size: 13px;"></i> Notes';
-            if ($total_chat_items > 0) {
-                $notesBtn .= ' <span class="badge" style="background: #6366f1; color: white; padding: 2px 6px; font-size: 10px; border-radius: 10px; margin-left: 2px;">' . $total_chat_items . '</span>';
-            }
-            $notesBtn .= '</button>';
-            $row[] = $notesBtn;
-
             $row[] = e($aRow['source_name']);
 
             $row[] = ($aRow['lastcontact'] == '0000-00-00 00:00:00' || ! is_date($aRow['lastcontact']) ? '' : '<span data-toggle="tooltip" data-title="' . e(_dt($aRow['lastcontact'])) . '" class="text-has-action is-date">' . e(time_ago($aRow['lastcontact'])) . '</span>');
@@ -375,9 +361,4 @@ return App_table::find('leads')
         }
 
         return $output;
-        } catch (\Throwable $e) {
-            header('HTTP/1.1 500 Internal Server Error');
-            echo "ERROR: " . $e->getMessage() . " in " . $e->getFile() . " on line " . $e->getLine() . "\n" . $e->getTraceAsString();
-            exit;
-        }
     })->setRules($rules);
