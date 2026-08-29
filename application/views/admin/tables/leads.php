@@ -83,11 +83,12 @@ if (isset($consent_purposes)) {
 
 return App_table::find('leads')
     ->outputUsing(function ($params) use ($statuses) {
-        extract($params);
+        try {
+            extract($params);
 
-        $lockAfterConvert      = get_option('lead_lock_after_convert_to_customer');
-        $has_permission_delete = staff_can('delete', 'leads');
-        $custom_fields         = get_table_custom_fields('leads');
+            $lockAfterConvert      = get_option('lead_lock_after_convert_to_customer');
+            $has_permission_delete = staff_can('delete', 'leads');
+            $custom_fields         = get_table_custom_fields('leads');
         $consentLeads          = get_option('gdpr_enable_consent_for_leads');
 
         $aColumns = [
@@ -374,4 +375,9 @@ return App_table::find('leads')
         }
 
         return $output;
+        } catch (\Throwable $e) {
+            header('HTTP/1.1 500 Internal Server Error');
+            echo "ERROR: " . $e->getMessage() . " in " . $e->getFile() . " on line " . $e->getLine() . "\n" . $e->getTraceAsString();
+            exit;
+        }
     })->setRules($rules);
