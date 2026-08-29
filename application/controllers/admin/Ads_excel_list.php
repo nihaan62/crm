@@ -110,15 +110,15 @@ class Ads_excel_list extends AdminController
                 
                 // Define unwanted technical and metadata columns
                 $unwanted = [
-                    'id', 'ad_id', 'adset_id', 'campaign_id', 'form_id', 
-                    'ad_name', 'adset_name', 'campaign_name', 'form_name', 
-                    'is_organic', 'organic', 'lead_status', 'note', 'cold wp send', 
-                    'cold_wp_send', 'cold wp send status', 'created_time'
+                    'id', 'ad id', 'adset id', 'campaign id', 'form id', 
+                    'ad name', 'adset name', 'campaign name', 'form name', 
+                    'is organic', 'organic', 'lead status', 'note', 'cold wp send', 
+                    'cold wp send status', 'created time'
                 ];
 
                 foreach ($rawHeaders as $idx => $h) {
                     $hTrim = trim($h);
-                    $hLower = strtolower($hTrim);
+                    $hLower = str_replace('_', ' ', strtolower($hTrim));
                     
                     // Skip unwanted columns if they match or contain unwanted tags
                     $shouldSkip = false;
