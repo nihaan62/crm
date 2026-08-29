@@ -302,7 +302,7 @@ return App_table::find('leads')
 
             // Notes inline editable column
             $row[] = '<div style="position:relative; min-width: 180px;">
-                <textarea class="lead-notes-textarea form-control" data-id="' . $aRow['id'] . '" style="width: 100%; border: 1px solid #ccd0d4; border-radius: 4px; padding: 4px 8px; font-size: 12.5px; resize: vertical; min-height: 42px; line-height: 1.4;" placeholder="Add notes here...">' . e($aRow['description']) . '</textarea>
+                <textarea class="lead-notes-textarea form-control" data-id="' . $aRow['id'] . '" style="width: 100%; border: 1px solid #ccd0d4; border-radius: 4px; padding: 4px 8px; font-size: 12.5px; resize: vertical; min-height: 42px; line-height: 1.4;">' . e($aRow['description']) . '</textarea>
                 <span class="save-indicator text-success" style="display:none; position:absolute; bottom:4px; right:8px; font-size:10px;"><i class="fa fa-check"></i> Saved</span>
             </div>';
 

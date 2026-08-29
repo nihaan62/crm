@@ -79,7 +79,7 @@
                             <?php $selected_cat = $this->input->get('category') ?? ''; ?>
                             <div class="tw-inline-block" style="min-width: 180px; vertical-align: middle; margin-left: 5px;">
                                 <select name="view_lead_category" class="selectpicker" data-width="100%" data-none-selected-text="All Leads" data-live-search="true">
-                                    <option value="" <?= ($selected_cat === '') ? 'selected' : ''; ?> data-subtext="Default">All Leads</option>
+                                    <option value="" <?= ($selected_cat === '') ? 'selected' : ''; ?>>All Leads</option>
                                     <option value="converted" <?= ($selected_cat === 'converted') ? 'selected' : ''; ?>>Converted Leads</option>
                                     <option value="cold_wp" <?= ($selected_cat === 'cold_wp') ? 'selected' : ''; ?>>Cold WP Messages</option>
                                     <option value="ads_wp" <?= ($selected_cat === 'ads_wp') ? 'selected' : ''; ?>>Ads WhatsApp Leads</option>
