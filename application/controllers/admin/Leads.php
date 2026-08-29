@@ -261,6 +261,7 @@ class Leads extends AdminController
 
             $this->db->insert(db_prefix() . 'leads', $lead_data);
             $existing_phones[$pKey] = true;
+        }
     }
 
     public function update_lead_description_ajax()
