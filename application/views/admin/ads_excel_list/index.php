@@ -353,6 +353,10 @@
                                     ?>
                                     <th><?= e(trim($cleanTitle)); ?></th>
                                 <?php endforeach; ?>
+                                <?php if (is_admin()): ?>
+                                    <th style="min-width: 90px; text-align: center;">Clicked</th>
+                                <?php endif; ?>
+                                <th style="min-width: 120px; text-align: center;">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -411,6 +415,73 @@
                                         <?php endif; ?>
                                     </td>
                                 <?php endforeach; ?>
+                                
+                                <?php 
+                                $dbLead = isset($row['db_lead']) ? $row['db_lead'] : null;
+                                ?>
+                                <?php if (is_admin()): ?>
+                                    <td class="text-center">
+                                        <?php if ($dbLead): ?>
+                                            <?php
+                                            $light1_color = ($dbLead['click_1'] == 1) ? '#25d366' : '#bbb';
+                                            $light2_color = ($dbLead['click_2'] == 1) ? '#25d366' : '#bbb';
+                                            
+                                            $light1_time = '';
+                                            if ($dbLead['click_1'] == 1 && !empty($dbLead['click_1_time'])) {
+                                                $light1_time = ' data-toggle="tooltip" data-title="' . e(_dt($dbLead['click_1_time'])) . '"';
+                                            }
+                                            
+                                            $light2_time = '';
+                                            if ($dbLead['click_2'] == 1 && !empty($dbLead['click_2_time'])) {
+                                                $light2_time = ' data-toggle="tooltip" data-title="' . e(_dt($dbLead['click_2_time'])) . '"';
+                                            }
+                                            ?>
+                                            <div style="display:inline-flex; align-items:center; gap:10px;">
+                                                <div <?= $light1_time; ?>><span style="display:inline-block; width:10px; height:10px; border-radius:50%; background-color:<?= $light1_color; ?>;"></span><span style="font-size:10px; margin-left:2px; font-weight:bold;">1</span></div>
+                                                <div <?= $light2_time; ?>><span style="display:inline-block; width:10px; height:10px; border-radius:50%; background-color:<?= $light2_color; ?>;"></span><span style="font-size:10px; margin-left:2px; font-weight:bold;">2</span></div>
+                                            </div>
+                                        <?php else: ?>
+                                            <span class="text-muted">—</span>
+                                        <?php endif; ?>
+                                    </td>
+                                <?php endif; ?>
+                                <td>
+                                    <?php if ($dbLead): ?>
+                                        <button type="button" class="btn btn-info btn-xs" style="display:block; width:100%; margin-bottom:4px; font-weight:bold; font-size:11px; padding:3px 6px;" onclick="initLeadLoanDetails(<?= $dbLead['id']; ?>); return false;">
+                                            <i class="fa fa-edit"></i> Details
+                                        </button>
+                                        <?php
+                                        $wasWpSent = total_rows('cold_wp_messages', ['lead_id' => $dbLead['id']]) > 0;
+                                        if ($wasWpSent):
+                                        ?>
+                                            <button type="button" class="btn btn-default btn-xs send-single-wp" style="display:block; width:100%; background-color:#dcdcdc; color:#777; font-weight:bold; font-size:11px; padding:3px 6px;" title="sended" data-id="<?= $dbLead['id']; ?>" data-name="<?= e($dbLead['name']); ?>" data-phone="<?= e($dbLead['phonenumber']); ?>">
+                                                <i class="fa-solid fa-rotate"></i> Re-send
+                                            </button>
+                                        <?php else: ?>
+                                            <button type="button" class="btn btn-success btn-xs send-single-wp" style="display:block; width:100%; background-color:#25d366; border-color:#25d366; color:#fff; font-weight:bold; font-size:11px; padding:3px 6px;" data-id="<?= $dbLead['id']; ?>" data-name="<?= e($dbLead['name']); ?>" data-phone="<?= e($dbLead['phonenumber']); ?>">
+                                                <i class="fa-brands fa-whatsapp"></i> WhatsApp
+                                            </button>
+                                        <?php endif; ?>
+                                    <?php else: ?>
+                                        <?php 
+                                        $fullName = isset($row['full_name']) ? $row['full_name'] : (isset($row['name']) ? $row['name'] : 'Customer'); 
+                                        $phoneVal = '';
+                                        foreach ($row as $k => $v) {
+                                            if (strpos(strtolower($k), 'phone') !== false) {
+                                                $phoneVal = $v;
+                                                break;
+                                            }
+                                        }
+                                        $cleanPhoneVal = preg_replace('/[^0-9]/', '', $phoneVal);
+                                        ?>
+                                        <?php if (!empty($cleanPhoneVal)): ?>
+                                            <a href="https://wa.me/<?= e($cleanPhoneVal); ?>" target="_blank" class="btn btn-success btn-xs" style="display:block; width:100%; background-color:#25d366; border-color:#25d366; color:#fff; text-align:center; margin-bottom:4px; font-weight:bold; font-size:11px; padding:3px 6px;">
+                                                <i class="fa-brands fa-whatsapp"></i> WhatsApp
+                                            </a>
+                                        <?php endif; ?>
+                                        <span class="text-muted" style="font-size:10px; display:block; text-align:center; font-weight:bold;">Not in CRM</span>
+                                    <?php endif; ?>
+                                </td>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>

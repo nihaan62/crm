@@ -95,7 +95,17 @@ class Ads_excel_list extends AdminController
         if (!empty($csvContent)) {
             $lines = explode("\n", str_replace("\r", "", $csvContent));
             if (count($lines) > 0) {
-                $rawHeaders = str_getcsv($lines[0]);
+                // Find the header row by looking for 'created_time' or 'form_name'
+                $headerLineIndex = 0;
+                foreach ($lines as $idx => $line) {
+                    $rowValues = str_getcsv($line);
+                    if (in_array('created_time', $rowValues) || in_array('form_name', $rowValues)) {
+                        $headerLineIndex = $idx;
+                        break;
+                    }
+                }
+
+                $rawHeaders = str_getcsv($lines[$headerLineIndex]);
                 $headerMap  = [];
                 
                 // Define unwanted technical columns
@@ -113,7 +123,21 @@ class Ads_excel_list extends AdminController
                     }
                 }
 
-                for ($i = 1; $i < count($lines); $i++) {
+                // Retrieve DB leads to match by phone number
+                $db_leads = $this->db->select('id, name, phonenumber, click_1, click_2, click_1_time, click_2_time')->get(db_prefix() . 'leads')->result_array();
+                $leads_by_phone = [];
+                foreach ($db_leads as $dl) {
+                    $clean = preg_replace('/[^0-9]/', '', $dl['phonenumber']);
+                    if (strlen($clean) >= 10) {
+                        $key = substr($clean, -10);
+                        $leads_by_phone[$key] = $dl;
+                    }
+                }
+
+                for ($i = 0; $i < count($lines); $i++) {
+                    if ($i === $headerLineIndex) {
+                        continue;
+                    }
                     if (trim($lines[$i]) === '') {
                         continue;
                     }
@@ -122,7 +146,7 @@ class Ads_excel_list extends AdminController
                         continue;
                     }
 
-                    // Skip the row if it contains keys (e.g., "id" or "created_time" as data)
+                    // Skip the row if it contains key strings
                     if (isset($rowValues[0]) && (trim($rowValues[0]) === 'id' || trim($rowValues[0]) === 'created_time')) {
                         continue;
                     }
@@ -137,6 +161,29 @@ class Ads_excel_list extends AdminController
                         foreach ($headerMap as $idx => $hName) {
                             $row[$hName] = isset($rowValues[$idx]) ? trim($rowValues[$idx]) : '';
                         }
+
+                        // Try to find matching phone in CRM
+                        $row['db_lead'] = null;
+                        
+                        // Find the phone field in the rowValues using the raw header index
+                        $phoneIdx = -1;
+                        foreach ($rawHeaders as $idx => $h) {
+                            if (strpos(strtolower(trim($h)), 'phone') !== false) {
+                                $phoneIdx = $idx;
+                                break;
+                            }
+                        }
+
+                        if ($phoneIdx !== -1 && isset($rowValues[$phoneIdx])) {
+                            $pClean = preg_replace('/[^0-9]/', '', $rowValues[$phoneIdx]);
+                            if (strlen($pClean) >= 10) {
+                                $pKey = substr($pClean, -10);
+                                if (isset($leads_by_phone[$pKey])) {
+                                    $row['db_lead'] = $leads_by_phone[$pKey];
+                                }
+                            }
+                        }
+
                         $data_rows[] = $row;
                     }
                 }
