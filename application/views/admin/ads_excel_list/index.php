@@ -1,5 +1,5 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
-<?php init_head(); ?>
+<?php if (!isset($is_ajax) || !$is_ajax) { init_head(); } ?>
 <style>
 /* Hide hero banner when loaded dynamically in the Leads all category page */
 #excel-leads-content .ael-hero {
@@ -596,4 +596,4 @@ $(document).off('click', '.import-all-excel-leads').on('click', '.import-all-exc
     });
 });
 </script>
-<?php init_tail(); ?>
+<?php if (!isset($is_ajax) || !$is_ajax) { init_tail(); } ?>

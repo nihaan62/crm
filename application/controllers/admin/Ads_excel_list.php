@@ -211,6 +211,7 @@ class Ads_excel_list extends AdminController
         $data['rows']             = $data_rows;
         $data['total_sheet_rows'] = $total_sheet_rows;
         $data['fetch_error']      = $fetch_error;
+        $data['is_ajax']          = $this->input->is_ajax_request();
 
         $this->load->view('admin/ads_excel_list/index', $data);
     }

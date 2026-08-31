@@ -441,6 +441,17 @@
     var openLeadID = '<?= e($leadid); ?>';
     $(function() {
         leads_kanban();
+
+        // Load Excel Leads view dynamically if selected category is ads_excel_list
+        if ('<?= $selected_cat; ?>' === 'ads_excel_list') {
+            $('#normal-leads-container').hide();
+            $('#excel-leads-container').show();
+            $('#excel-leads-content').load(admin_url + 'ads_excel_list', function() {
+                if (typeof(initExcelTable) === 'function') {
+                    initExcelTable();
+                }
+            });
+        }
         $('#leads_bulk_mark_lost').on('change', function() {
             $('#move_to_status_leads_bulk').prop('disabled', $(this).prop('checked') == true);
             $('#move_to_status_leads_bulk').selectpicker('refresh')
