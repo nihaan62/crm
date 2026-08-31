@@ -14,6 +14,28 @@ if (is_gdpr() && get_option('gdpr_enable_consent_for_leads') == '1') {
 $rules = [
     App_table_filter::new('name', 'TextRule')->label(_l('leads_dt_name')),
     App_table_filter::new('phonenumber', 'TextRule')->label(_l('leads_dt_phonenumber')),
+    App_table_filter::new('company', 'TextRule')->label(_l('lead_company')),
+    App_table_filter::new('loan_type', 'SelectRule')->label('Loan Type')->options(function () {
+        return [
+            ['value' => 'Personal', 'label' => 'Personal'],
+            ['value' => 'Business', 'label' => 'Business']
+        ];
+    }),
+    App_table_filter::new('email', 'TextRule')->label(_l('leads_dt_email')),
+    App_table_filter::new('title', 'TextRule')->label(_l('lead_title')),
+    App_table_filter::new('address', 'TextRule')->label(_l('lead_address')),
+    App_table_filter::new('website', 'TextRule')->label(_l('lead_website')),
+    App_table_filter::new('description', 'TextRule')->label(_l('lead_description')),
+    App_table_filter::new('tags', 'SelectRule')
+        ->label(_l('tags'))
+        ->options(function ($ci) {
+            return collect($ci->db->order_by('name', 'asc')->get(db_prefix() . 'tags')->result_array())->map(fn ($tag) => [
+                'value' => $tag['id'],
+                'label' => $tag['name'],
+            ])->all();
+        })->raw(function ($value, $operator, $sql_operator) {
+            return db_prefix() . 'leads.id IN (SELECT rel_id FROM ' . db_prefix() . 'taggables WHERE tag_id = ' . $value . ' AND rel_type = "lead")';
+        }),
     App_table_filter::new('country', 'SelectRule')->label(_l('lead_country'))->options(function ($ci) {
         return collect(get_all_countries())->map(fn ($country) => [
             'value' => $country['country_id'],
