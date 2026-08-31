@@ -260,6 +260,19 @@ class Ads_excel_list extends AdminController
             }
         }
 
+        // Determine Loan Type
+        $loan_type = 'Personal';
+        foreach ($this->input->post() as $key => $val) {
+            $keyLower = strtolower($key);
+            $valLower = strtolower($val);
+            if (strpos($keyLower, 'funding') !== false || strpos($keyLower, 'describes') !== false) {
+                if (strpos($valLower, 'business') !== false || strpos($valLower, 'owner') !== false) {
+                    $loan_type = 'Business';
+                    break;
+                }
+            }
+        }
+
         $lead_data = [
             'name'        => $name ?: 'Excel Lead',
             'phonenumber' => $phoneClean,
@@ -268,7 +281,8 @@ class Ads_excel_list extends AdminController
             'source'      => 1, // default fallback source ID
             'status'      => 1, // default status ID (usually customer/created)
             'assigned'    => get_staff_user_id() ?: 1,
-            'dateadded'   => date('Y-m-d H:i:s')
+            'dateadded'   => date('Y-m-d H:i:s'),
+            'loan_type'   => $loan_type
         ];
 
         // Find or create 'Ads Excel List' source
@@ -499,6 +513,21 @@ class Ads_excel_list extends AdminController
                 }
             }
 
+            // Determine Loan Type
+            $loan_type = 'Personal';
+            foreach ($rawHeaders as $idx => $h) {
+                $hLower = strtolower($h);
+                if (strpos($hLower, 'funding') !== false || strpos($hLower, 'describes') !== false) {
+                    if (isset($rowValues[$idx])) {
+                        $valLower = strtolower($rowValues[$idx]);
+                        if (strpos($valLower, 'business') !== false || strpos($valLower, 'owner') !== false) {
+                            $loan_type = 'Business';
+                            break;
+                        }
+                    }
+                }
+            }
+
             $lead_data = [
                 'name'        => $name ?: 'Excel Lead',
                 'phonenumber' => preg_replace('/[^0-9+]/', '', $phone),
@@ -507,7 +536,8 @@ class Ads_excel_list extends AdminController
                 'source'      => $source_id,
                 'status'      => 1, // default status
                 'assigned'    => get_staff_user_id() ?: 1,
-                'dateadded'   => date('Y-m-d H:i:s')
+                'dateadded'   => date('Y-m-d H:i:s'),
+                'loan_type'   => $loan_type
             ];
 
             if ($this->db->insert(db_prefix() . 'leads', $lead_data)) {

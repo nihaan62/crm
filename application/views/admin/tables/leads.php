@@ -100,6 +100,7 @@ return App_table::find('leads')
         }
         $aColumns = array_merge($aColumns, [
             'company',
+            'loan_type',
             db_prefix() . 'leads.email as email',
             db_prefix() . 'leads.phonenumber as phonenumber',
             'lead_value',
@@ -233,6 +234,8 @@ return App_table::find('leads')
                 $row[] = $consentHTML;
             }
             $row[] = e($aRow['company']);
+
+            $row[] = $aRow['loan_type'] ? e($aRow['loan_type']) : '<span class="text-muted">—</span>';
 
             $row[] = ($aRow['email'] != '' ? '<a href="mailto:' . e($aRow['email']) . '">' . e($aRow['email']) . '</a>' : '');
 

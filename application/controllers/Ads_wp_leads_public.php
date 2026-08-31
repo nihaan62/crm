@@ -81,6 +81,11 @@ class Ads_wp_leads_public extends App_Controller
         if ($service) $description .= 'Service: ' . $service;
         if ($amount)  $description .= ($description ? ' | ' : '') . 'Loan Amount: ₹' . $amount;
 
+        $loan_type = 'Personal';
+        if (strpos(strtolower($service), 'business') !== false) {
+            $loan_type = 'Business';
+        }
+
         $data = [
             'name'        => $name ?: 'Unknown',
             'phonenumber' => $phone,
@@ -95,6 +100,7 @@ class Ads_wp_leads_public extends App_Controller
             'addedfrom'   => 0,
             'is_public'   => 0,
             'batch_name'  => $batch ?: null,
+            'loan_type'   => $loan_type,
         ];
 
         $this->db->insert(db_prefix() . 'leads', $data);

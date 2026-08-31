@@ -33,6 +33,9 @@ class Leads extends AdminController
         if (!$this->db->field_exists('click_2_time', $db_prefix . 'leads')) {
             $this->db->query("ALTER TABLE `{$db_prefix}leads` ADD COLUMN `click_2_time` DATETIME DEFAULT NULL");
         }
+        if (!$this->db->field_exists('loan_type', $db_prefix . 'leads')) {
+            $this->db->query("ALTER TABLE `{$db_prefix}leads` ADD COLUMN `loan_type` VARCHAR(191) DEFAULT NULL");
+        }
     }
 
     /* List all leads */
@@ -338,6 +341,21 @@ class Leads extends AdminController
                 }
             }
 
+            // Determine Loan Type
+            $loan_type = 'Personal';
+            foreach ($rawHeaders as $idx => $h) {
+                $hLower = strtolower($h);
+                if (strpos($hLower, 'funding') !== false || strpos($hLower, 'describes') !== false) {
+                    if (isset($rowValues[$idx])) {
+                        $valLower = strtolower($rowValues[$idx]);
+                        if (strpos($valLower, 'business') !== false || strpos($valLower, 'owner') !== false) {
+                            $loan_type = 'Business';
+                            break;
+                        }
+                    }
+                }
+            }
+
             $lead_data = [
                 'name'        => $name,
                 'phonenumber' => $pClean,
@@ -347,7 +365,8 @@ class Leads extends AdminController
                 'source'      => $source_id,
                 'status'      => 1,
                 'assigned'    => 1,
-                'dateadded'   => date('Y-m-d H:i:s')
+                'dateadded'   => date('Y-m-d H:i:s'),
+                'loan_type'   => $loan_type
             ];
 
             $this->db->insert(db_prefix() . 'leads', $lead_data);

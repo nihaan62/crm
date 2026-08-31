@@ -141,6 +141,11 @@ class Digital_marketing extends AdminController
         $first_status = $this->db->order_by('id', 'ASC')->limit(1)->get(db_prefix() . 'leads_status')->row();
         $status_id    = $first_status ? $first_status->id : 1;
 
+        $loan_type = 'Personal';
+        if (strpos(strtolower($description), 'business') !== false) {
+            $loan_type = 'Business';
+        }
+
         $data = [
             'name'        => $name,
             'phonenumber' => $phone,
@@ -154,6 +159,7 @@ class Digital_marketing extends AdminController
             'dateadded'   => date('Y-m-d H:i:s'),
             'addedfrom'   => get_staff_user_id(),
             'is_public'   => 0,
+            'loan_type'   => $loan_type,
         ];
 
         $this->db->insert(db_prefix() . 'leads', $data);

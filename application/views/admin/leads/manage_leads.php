@@ -249,6 +249,10 @@
                                     'th_attrs' => ['class' => 'toggleable', 'id' => 'th-company'],
                                 ];
                                 $_table_data[] = [
+                                    'name'     => 'Loan Type',
+                                    'th_attrs' => ['class' => 'toggleable', 'id' => 'th-loan-type'],
+                                ];
+                                $_table_data[] = [
                                     'name'     => _l('leads_dt_email'),
                                     'th_attrs' => ['class' => 'toggleable', 'id' => 'th-email'],
                                 ];

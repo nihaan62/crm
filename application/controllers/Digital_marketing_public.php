@@ -118,6 +118,11 @@ class Digital_marketing_public extends App_Controller
         $first_status = $this->db->order_by('id', 'ASC')->limit(1)->get(db_prefix() . 'leads_status')->row();
         $status_id    = $first_status ? $first_status->id : 1;
 
+        $loan_type = 'Personal';
+        if (strpos(strtolower($description), 'business') !== false) {
+            $loan_type = 'Business';
+        }
+
         $data = [
             'name'        => $name,
             'phonenumber' => $phone,
@@ -131,6 +136,7 @@ class Digital_marketing_public extends App_Controller
             'dateadded'   => date('Y-m-d H:i:s'),
             'addedfrom'   => 0,
             'is_public'   => 0,
+            'loan_type'   => $loan_type,
         ];
 
         $this->db->insert(db_prefix() . 'leads', $data);
