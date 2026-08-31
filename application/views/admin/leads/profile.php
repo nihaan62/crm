@@ -192,6 +192,12 @@
                         <?= isset($lead) && $lead->company != '' ? e($lead->company) : '-' ?>
                     </dd>
                     <dt class="lead-field-heading tw-font-normal tw-text-neutral-500">
+                        Loan Type
+                    </dt>
+                    <dd class="tw-text-neutral-900 tw-mt-1">
+                        <?= isset($lead) && isset($lead->loan_type) && $lead->loan_type != '' ? e($lead->loan_type) : '-' ?>
+                    </dd>
+                    <dt class="lead-field-heading tw-font-normal tw-text-neutral-500">
                         <?= _l('lead_address'); ?>
                     </dt>
                     <dd class="tw-text-neutral-900 tw-mt-1 tw-whitespace-pre-line">
@@ -433,6 +439,14 @@ echo render_select('assigned', $members, ['staffid', ['firstname', 'lastname']],
                 </div>
                 <?php $value = (isset($lead) ? $lead->company : ''); ?>
                 <?= render_input('company', 'lead_company', $value); ?>
+                <?php
+                $loan_type_value = (isset($lead) ? $lead->loan_type : 'Personal');
+                $loan_types = [
+                    ['id' => 'Personal', 'name' => 'Personal'],
+                    ['id' => 'Business', 'name' => 'Business']
+                ];
+                echo render_select('loan_type', $loan_types, ['id', ['name']], 'Loan Type', $loan_type_value);
+                ?>
             </div>
             <div class="col-md-6">
                 <?php $value = (isset($lead) ? $lead->address : ''); ?>
