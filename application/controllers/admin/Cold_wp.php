@@ -118,7 +118,7 @@ class Cold_wp extends AdminController
 
         // Call the WhatsApp API to dispatch the message programmatically
         $url = 'https://2fa.tehub.in/api/whatsapp.php';
-        $api_key = 'b0b306dc4bf090c19f85c584906a967c';
+        $api_key = get_option('whatsapp_api_key') ?: 'b0b306dc4bf090c19f85c584906a967c';
 
         $payload = [
             'to' => $clean_phone,

@@ -52,7 +52,7 @@ if (!function_exists('send_automation_whatsapp_reply')) {
             . "Once we have these details, our team will get in touch with you and guide you further. 😊";
 
         $url = 'https://2fa.tehub.in/api/whatsapp.php';
-        $api_key = 'b0b306dc4bf090c19f85c584906a967c';
+        $api_key = get_option('whatsapp_api_key') ?: 'b0b306dc4bf090c19f85c584906a967c';
 
         $payload = [
             'to' => $clean_phone,
