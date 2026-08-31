@@ -479,13 +479,13 @@ function initExcelTable() {
     }
 
     var table = $('#aelTable').DataTable({
-        "pageLength": 10,
+        "pageLength": 25,
         "language": {
             "emptyTable": "No leads found"
         },
         "dom": "rtip", // Custom search/info/pagination layout
         "ordering": true,
-        "info": false,
+        "info": true,
         "paging": true,
         "columnDefs": [
             { "orderable": false, "targets": 0 } // index column not orderable

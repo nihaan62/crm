@@ -27,6 +27,13 @@ class Ads_excel_list extends AdminController
             $lead_count = 30;
         }
 
+        $show_count = (int) get_option('excel_lead_show_count');
+        if ($show_count == -1) {
+            $show_count = 999999;
+        } elseif ($show_count <= 0) {
+            $show_count = 30;
+        }
+
         // Convert Google Sheet URL to CSV export link
         $csv_url = $sheet_url;
         if (preg_match('/spreadsheets\/d\/([a-zA-Z0-9-_]+)/', $sheet_url, $matches)) {
@@ -172,7 +179,7 @@ class Ads_excel_list extends AdminController
 
                     $total_sheet_rows++;
 
-                    if (count($data_rows) < $lead_count) {
+                    if (count($data_rows) < $show_count) {
                         $row = [];
                         foreach ($headerMap as $idx => $hName) {
                             $row[$hName] = isset($rowValues[$idx]) ? trim($rowValues[$idx]) : '';

@@ -213,6 +213,8 @@ return App_table::find('leads')
                 $rResult = array_slice($rResult, 0, $show_count);
                 $output['iTotalRecords'] = min((int)$output['iTotalRecords'], $show_count);
                 $output['iTotalDisplayRecords'] = min((int)$output['iTotalDisplayRecords'], $show_count);
+                $output['recordsTotal'] = min((int)$output['iTotalRecords'], $show_count);
+                $output['recordsFiltered'] = min((int)$output['iTotalDisplayRecords'], $show_count);
             }
         }
 
