@@ -245,12 +245,8 @@
                                     ];
                                 }
                                 $_table_data[] = [
-                                    'name'     => _l('lead_company'),
-                                    'th_attrs' => ['class' => 'toggleable', 'id' => 'th-company'],
-                                ];
-                                $_table_data[] = [
                                     'name'     => 'Loan Type',
-                                    'th_attrs' => ['class' => 'toggleable', 'id' => 'th-loan-type'],
+                                    'th_attrs' => ['class' => 'toggleable', 'id' => 'th-company'],
                                 ];
                                 $_table_data[] = [
                                     'name'     => _l('leads_dt_email'),

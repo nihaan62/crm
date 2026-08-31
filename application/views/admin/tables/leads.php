@@ -233,9 +233,7 @@ return App_table::find('leads')
                 }
                 $row[] = $consentHTML;
             }
-            $row[] = e($aRow['company']);
-
-            $row[] = $aRow['loan_type'] ? e($aRow['loan_type']) : '<span class="text-muted">—</span>';
+            $row[] = !empty($aRow['loan_type']) ? e($aRow['loan_type']) : (!empty($aRow['company']) ? e($aRow['company']) : '<span class="text-muted">—</span>');
 
             $row[] = ($aRow['email'] != '' ? '<a href="mailto:' . e($aRow['email']) . '">' . e($aRow['email']) . '</a>' : '');
 
@@ -243,9 +241,15 @@ return App_table::find('leads')
 
             $base_currency = get_base_currency();
             if (!empty($aRow['lead_value']) && $aRow['lead_value'] > 0) {
-                $formatted_val = app_format_money($aRow['lead_value'], $base_currency->id);
-                // Fix broken UTF-8 encoding of the Rupee symbol
-                $formatted_val = str_replace('â‚¹', '₹', $formatted_val);
+                $val = (float)$aRow['lead_value'];
+                if ($val >= 100000) {
+                    $lakh_val = $val / 100000;
+                    $lakh_formatted = (floor($lakh_val) == $lakh_val) ? number_format($lakh_val, 0) : number_format($lakh_val, 1);
+                    $formatted_val = '₹' . $lakh_formatted . ' Lakh';
+                } else {
+                    $formatted_val = app_format_money($aRow['lead_value'], $base_currency->id);
+                    $formatted_val = str_replace('â‚¹', '₹', $formatted_val);
+                }
                 $row[] = '<span class="tw-font-medium">' . $formatted_val . '</span>';
             } else {
                 $row[] = '<span class="text-muted">—</span>';

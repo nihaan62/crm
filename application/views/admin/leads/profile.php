@@ -183,7 +183,22 @@
                         <?= _l('lead_value'); ?>
                     </dt>
                     <dd class="tw-text-neutral-900 tw-mt-1">
-                        <?= isset($lead) && $lead->lead_value != 0 ? e(app_format_money($lead->lead_value, $base_currency->id)) : '-' ?>
+                        <?php
+                        if (isset($lead) && $lead->lead_value != 0) {
+                            $val = (float)$lead->lead_value;
+                            if ($val >= 100000) {
+                                $lakh_val = $val / 100000;
+                                $lakh_formatted = (floor($lakh_val) == $lakh_val) ? number_format($lakh_val, 0) : number_format($lakh_val, 1);
+                                echo '₹' . $lakh_formatted . ' Lakh';
+                            } else {
+                                $formatted_val = app_format_money($lead->lead_value, $base_currency->id);
+                                $formatted_val = str_replace('â‚¹', '₹', $formatted_val);
+                                echo e($formatted_val);
+                            }
+                        } else {
+                            echo '-';
+                        }
+                        ?>
                     </dd>
                     <dt class="lead-field-heading tw-font-normal tw-text-neutral-500">
                         <?= _l('lead_company'); ?>
