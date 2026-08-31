@@ -122,6 +122,21 @@ class Digital_marketing extends AdminController
             return;
         }
 
+        // Check for duplicate phone number (match last 10 digits)
+        $phoneClean = preg_replace('/[^0-9]/', '', $phone);
+        if (strlen($phoneClean) >= 10) {
+            $phoneKey = substr($phoneClean, -10);
+            $this->db->like('phonenumber', $phoneKey);
+            $existing = $this->db->get(db_prefix() . 'leads')->row();
+            if ($existing) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Duplicate lead: A lead with this phone number already exists in CRM.'
+                ]);
+                return;
+            }
+        }
+
         // Get first lead status
         $first_status = $this->db->order_by('id', 'ASC')->limit(1)->get(db_prefix() . 'leads_status')->row();
         $status_id    = $first_status ? $first_status->id : 1;

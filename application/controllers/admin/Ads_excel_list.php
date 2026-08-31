@@ -224,6 +224,21 @@ class Ads_excel_list extends AdminController
         $name = $this->input->post('name');
         $phone = $this->input->post('phone');
         $email = $this->input->post('email');
+
+        // Check for duplicate phone number (match last 10 digits)
+        $pClean = preg_replace('/[^0-9]/', '', $phone);
+        if (strlen($pClean) >= 10) {
+            $pKey = substr($pClean, -10);
+            $this->db->like('phonenumber', $pKey);
+            $existing = $this->db->get(db_prefix() . 'leads')->row();
+            if ($existing) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Duplicate lead: A lead with this phone number already exists in CRM.'
+                ]);
+                exit;
+            }
+        }
         
         // Clean phone number format for lead creation
         $phoneClean = preg_replace('/[^0-9+]/', '', $phone);
@@ -284,6 +299,226 @@ class Ads_excel_list extends AdminController
                 'message' => 'Failed to import lead. Please try again.'
             ]);
         }
+        exit;
+    }
+
+    public function import_all_leads_ajax()
+    {
+        if (!$this->input->is_ajax_request()) {
+            ajax_access_denied();
+        }
+
+        $sheet_url = get_option('excel_sheet_url');
+        if (empty($sheet_url)) {
+            $sheet_url = 'https://docs.google.com/spreadsheets/d/17hEUmsz8Q8Q32KDKO7qi0uTdhAXIDz7vRvPmkMS7Yv8/edit?usp=sharing';
+        }
+
+        $lead_count = (int) get_option('excel_lead_count');
+        if ($lead_count <= 0) {
+            $lead_count = 30;
+        }
+
+        // Convert Google Sheet URL to CSV export link
+        $csv_url = $sheet_url;
+        if (preg_match('/spreadsheets\/d\/([a-zA-Z0-9-_]+)/', $sheet_url, $matches)) {
+            $csv_url = "https://docs.google.com/spreadsheets/d/" . $matches[1] . "/export?format=csv";
+        }
+
+        $csvContent = '';
+        $opts = [
+            "http" => [
+                "method" => "GET",
+                "header" => "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)\r\n",
+                "timeout" => 15
+            ],
+            "ssl" => [
+                "verify_peer" => false,
+                "verify_peer_name" => false,
+            ]
+        ];
+        $context = stream_context_create($opts);
+
+        if (function_exists('curl_init')) {
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $csv_url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            if (!ini_get('open_basedir')) {
+                curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+            }
+            curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+            curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)');
+            $csvContent = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if (($httpCode == 301 || $httpCode == 302) && ini_get('open_basedir')) {
+                $csvContent = @file_get_contents($csv_url, false, $context);
+            }
+        }
+
+        if (empty($csvContent)) {
+            $csvContent = @file_get_contents($csv_url, false, $context);
+        }
+
+        if (empty($csvContent) || strpos($csvContent, '<!DOCTYPE html>') !== false || strpos($csvContent, '<html') !== false) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Failed to fetch Google Sheet data. Make sure it is shared publicly.'
+            ]);
+            exit;
+        }
+
+        $lines = explode("\n", str_replace("\r", "", $csvContent));
+        if (count($lines) < 2) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'The Google Sheet is empty.'
+            ]);
+            exit;
+        }
+
+        // Find header index
+        $headerLineIndex = 0;
+        foreach ($lines as $idx => $line) {
+            $rowValues = str_getcsv($line);
+            if (in_array('created_time', $rowValues) || in_array('form_name', $rowValues)) {
+                $headerLineIndex = $idx;
+                break;
+            }
+        }
+
+        $rawHeaders = str_getcsv($lines[$headerLineIndex]);
+        
+        // Find important column indices
+        $phoneIdx = -1;
+        $nameIdx = -1;
+        $emailIdx = -1;
+        foreach ($rawHeaders as $idx => $h) {
+            $hLower = strtolower(trim($h));
+            if (strpos($hLower, 'phone') !== false) {
+                $phoneIdx = $idx;
+            } elseif (strpos($hLower, 'name') !== false || $hLower === 'full_name') {
+                $nameIdx = $idx;
+            } elseif (strpos($hLower, 'email') !== false) {
+                $emailIdx = $idx;
+            }
+        }
+
+        // Fetch existing leads to check duplicates
+        $db_leads = $this->db->select('phonenumber')->get(db_prefix() . 'leads')->result_array();
+        $existing_phones = [];
+        foreach ($db_leads as $dl) {
+            $clean = preg_replace('/[^0-9]/', '', $dl['phonenumber']);
+            if (strlen($clean) >= 10) {
+                $existing_phones[substr($clean, -10)] = true;
+            }
+        }
+
+        // Find or create 'Ads Excel List' source
+        $source_id = 1;
+        $this->db->where('name', 'Ads Excel List');
+        $source = $this->db->get(db_prefix() . 'leads_sources')->row();
+        if ($source) {
+            $source_id = $source->id;
+        } else {
+            $this->db->where('name', 'Ads WhatsApp');
+            $source2 = $this->db->get(db_prefix() . 'leads_sources')->row();
+            if ($source2) {
+                $source_id = $source2->id;
+            }
+        }
+
+        $imported_count = 0;
+        $duplicate_count = 0;
+
+        for ($i = 0; $i < count($lines); $i++) {
+            if ($i === $headerLineIndex) {
+                continue;
+            }
+            if (trim($lines[$i]) === '') {
+                continue;
+            }
+            $rowValues = str_getcsv($lines[$i]);
+            if (empty(array_filter($rowValues))) {
+                continue;
+            }
+
+            if (isset($rowValues[0]) && (trim($rowValues[0]) === 'id' || trim($rowValues[0]) === 'created_time')) {
+                continue;
+            }
+            if (isset($rowValues[1]) && trim($rowValues[1]) === 'created_time') {
+                continue;
+            }
+
+            // Limit check just like normal list
+            if ($imported_count + $duplicate_count >= $lead_count) {
+                break;
+            }
+
+            $phone = ($phoneIdx !== -1 && isset($rowValues[$phoneIdx])) ? trim($rowValues[$phoneIdx]) : '';
+            $name = ($nameIdx !== -1 && isset($rowValues[$nameIdx])) ? trim($rowValues[$nameIdx]) : '';
+            $email = ($emailIdx !== -1 && isset($rowValues[$emailIdx])) ? trim($rowValues[$emailIdx]) : '';
+
+            if (empty($phone)) {
+                continue;
+            }
+
+            // Extract last 10 digits
+            $pClean = preg_replace('/[^0-9]/', '', $phone);
+            if (strlen($pClean) < 10) {
+                continue;
+            }
+            $pKey = substr($pClean, -10);
+
+            if (isset($existing_phones[$pKey])) {
+                $duplicate_count++;
+                continue;
+            }
+
+            // Build description from other fields
+            $description = '';
+            foreach ($rawHeaders as $idx => $h) {
+                if (in_array($idx, [$phoneIdx, $nameIdx, $emailIdx])) {
+                    continue;
+                }
+                $hTrim = trim($h);
+                if (empty($hTrim)) {
+                    continue;
+                }
+                // Skip Perfex CRM/Facebook technical fields
+                $hLower = strtolower($hTrim);
+                if (strpos($hLower, 'id') !== false || strpos($hLower, 'time') !== false) {
+                    continue;
+                }
+                if (isset($rowValues[$idx]) && !empty(trim($rowValues[$idx]))) {
+                    $cleanKey = ucwords(str_replace(['_', '?', '.'], [' ', '', ''], $hTrim));
+                    $description .= $cleanKey . ': ' . trim($rowValues[$idx]) . "\n";
+                }
+            }
+
+            $lead_data = [
+                'name'        => $name ?: 'Excel Lead',
+                'phonenumber' => preg_replace('/[^0-9+]/', '', $phone),
+                'email'       => $email,
+                'description' => trim($description),
+                'source'      => $source_id,
+                'status'      => 1, // default status
+                'assigned'    => get_staff_user_id() ?: 1,
+                'dateadded'   => date('Y-m-d H:i:s')
+            ];
+
+            if ($this->db->insert(db_prefix() . 'leads', $lead_data)) {
+                $imported_count++;
+                $existing_phones[$pKey] = true;
+            }
+        }
+
+        echo json_encode([
+            'success' => true,
+            'message' => "Successfully imported {$imported_count} new leads. {$duplicate_count} duplicates skipped."
+        ]);
         exit;
     }
 }

@@ -52,6 +52,22 @@ class Ads_wp_leads_public extends App_Controller
             exit;
         }
 
+        // Check for duplicate phone number (match last 10 digits)
+        $phoneClean = preg_replace('/[^0-9]/', '', $phone);
+        if (strlen($phoneClean) >= 10) {
+            $phoneKey = substr($phoneClean, -10);
+            $this->db->like('phonenumber', $phoneKey);
+            $existing = $this->db->get(db_prefix() . 'leads')->row();
+            if ($existing) {
+                echo json_encode([
+                    'success' => true,
+                    'lead_id' => $existing->id,
+                    'message' => 'Lead already exists in CRM (skipped duplicate).'
+                ]);
+                exit;
+            }
+        }
+
         // Get or create lead source
         $source_id = $this->_get_or_create_source($this->source_name);
 

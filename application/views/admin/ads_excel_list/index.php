@@ -266,6 +266,9 @@
                         </h2>
                     </div>
                     <div class="ael-hero-actions">
+                        <button type="button" class="btn btn-primary btn-sm import-all-excel-leads" style="background-color: #1a73e8; border-color: #1a73e8; color: #fff;">
+                            <i class="fa fa-upload"></i>&nbsp; Import All Leads
+                        </button>
                         <a href="<?= admin_url('settings?group=general'); ?>" class="btn btn-default btn-sm">
                             <i class="fa fa-cog"></i>&nbsp; Configure Settings
                         </a>
@@ -556,6 +559,39 @@ $(document).off('click', '.import-excel-lead').on('click', '.import-excel-lead',
         }
     }).fail(function() {
         alert_float('danger', 'Failed to import lead.');
+        btn.prop('disabled', false).html(originalText);
+    });
+});
+// AJAX Bulk Lead Import Action
+$(document).off('click', '.import-all-excel-leads').on('click', '.import-all-excel-leads', function(e) {
+    e.preventDefault();
+    var btn = $(this);
+    var originalText = btn.html();
+    
+    if (!confirm('Are you sure you want to import all new leads from the Google Sheet? Duplicates will be skipped.')) {
+        return;
+    }
+    
+    btn.prop('disabled', true).html('<i class="fa-solid fa-circle-notch fa-spin"></i> Importing Leads...');
+    
+    var postData = {};
+    if (typeof(csrfData) !== 'undefined') {
+        postData[csrfData.token_name] = csrfData.hash;
+    }
+    
+    $.post(admin_url + 'ads_excel_list/import_all_leads_ajax', postData, function(response) {
+        var res = JSON.parse(response);
+        if (res.success) {
+            alert_float('success', res.message);
+            setTimeout(function() {
+                window.location.reload();
+            }, 1500);
+        } else {
+            alert_float('danger', res.message);
+            btn.prop('disabled', false).html(originalText);
+        }
+    }).fail(function() {
+        alert_float('danger', 'Failed to import bulk leads.');
         btn.prop('disabled', false).html(originalText);
     });
 });

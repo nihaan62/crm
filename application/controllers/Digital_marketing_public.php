@@ -98,6 +98,19 @@ class Digital_marketing_public extends App_Controller
             return;
         }
 
+        // Check for duplicate phone number (match last 10 digits)
+        $phoneClean = preg_replace('/[^0-9]/', '', $phone);
+        if (strlen($phoneClean) >= 10) {
+            $phoneKey = substr($phoneClean, -10);
+            $this->db->like('phonenumber', $phoneKey);
+            $existing = $this->db->get(db_prefix() . 'leads')->row();
+            if ($existing) {
+                $this->session->set_flashdata('dm_success', 'Thank you! Your enquiry has been received.');
+                redirect(current_url());
+                return;
+            }
+        }
+
         $source_name = ($type === 'loans') ? $this->loans_source_name : $this->it_source_name;
         $source_id   = $this->_get_or_create_source($source_name);
 
