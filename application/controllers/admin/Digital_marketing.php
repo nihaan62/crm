@@ -166,9 +166,6 @@ class Digital_marketing extends AdminController
         $insert_id = $this->db->insert_id();
 
         if ($insert_id) {
-            if (!empty($data['phonenumber'])) {
-                send_automation_whatsapp_reply($insert_id, $data['phonenumber']);
-            }
             log_activity('New Lead Added via Digital Marketing Form [ID: ' . $insert_id . ']');
             echo json_encode(['success' => true, 'lead_id' => $insert_id]);
         } else {

@@ -303,9 +303,6 @@ class Ads_excel_list extends AdminController
         $insert_id = $this->db->insert_id();
 
         if ($success && $insert_id) {
-            if (!empty($lead_data['phonenumber'])) {
-                send_automation_whatsapp_reply($insert_id, $lead_data['phonenumber']);
-            }
             echo json_encode([
                 'success' => true,
                 'lead_id' => $insert_id,
@@ -544,10 +541,6 @@ class Ads_excel_list extends AdminController
             ];
 
             if ($this->db->insert(db_prefix() . 'leads', $lead_data)) {
-                $insert_id = $this->db->insert_id();
-                if ($insert_id && !empty($lead_data['phonenumber'])) {
-                    send_automation_whatsapp_reply($insert_id, $lead_data['phonenumber']);
-                }
                 $imported_count++;
                 $existing_phones[$pKey] = true;
             }

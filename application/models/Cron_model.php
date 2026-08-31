@@ -1557,9 +1557,6 @@ class Cron_model extends App_Model
                     $this->db->insert(db_prefix() . 'leads', $lead_data);
                     $insert_id = $this->db->insert_id();
                     if ($insert_id) {
-                        if (!empty($lead_data['phonenumber'])) {
-                            send_automation_whatsapp_reply($insert_id, $lead_data['phonenumber']);
-                        }
                         foreach ($formFields as $field => $value) {
                             if ($field == 'country') {
                                 if ($value == '') {

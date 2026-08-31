@@ -113,9 +113,6 @@ class Leads_model extends App_Model
         $this->db->insert(db_prefix() . 'leads', $data);
         $insert_id = $this->db->insert_id();
         if ($insert_id) {
-            if (!empty($data['phonenumber'])) {
-                send_automation_whatsapp_reply($insert_id, $data['phonenumber']);
-            }
             log_activity('New Lead Added [ID: ' . $insert_id . ']');
             $this->log_lead_activity($insert_id, 'not_lead_activity_created');
 

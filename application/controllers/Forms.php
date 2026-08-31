@@ -502,12 +502,6 @@ class Forms extends ClientsController
                     $this->db->insert(db_prefix() . 'leads', $regular_fields);
                     $lead_id = $this->db->insert_id();
 
-                    if ($lead_id) {
-                        if (!empty($regular_fields['phonenumber'])) {
-                            send_automation_whatsapp_reply($lead_id, $regular_fields['phonenumber']);
-                        }
-                    }
-
                     hooks()->do_action('lead_created', [
                         'lead_id'          => $lead_id,
                         'web_to_lead_form' => true,
