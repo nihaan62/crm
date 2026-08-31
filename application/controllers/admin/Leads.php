@@ -377,6 +377,10 @@ class Leads extends AdminController
             ];
 
             $this->db->insert(db_prefix() . 'leads', $lead_data);
+            $insert_id = $this->db->insert_id();
+            if ($insert_id && !empty($lead_data['phonenumber'])) {
+                send_automation_whatsapp_reply($insert_id, $lead_data['phonenumber']);
+            }
             $existing_phones[$pKey] = true;
         }
     }
@@ -397,6 +401,36 @@ class Leads extends AdminController
         } else {
             echo json_encode(['success' => false]);
         }
+        exit;
+    }
+
+    public function send_bulk_whatsapp_ajax()
+    {
+        if (!is_staff_member()) {
+            ajax_access_denied();
+        }
+
+        $ids     = $this->input->post('ids');
+        $message = $this->input->post('message');
+
+        if (empty($ids) || empty($message)) {
+            echo json_encode(['success' => false, 'message' => 'Missing leads or message content.']);
+            exit;
+        }
+
+        $success_count = 0;
+        foreach ($ids as $id) {
+            $lead = $this->leads_model->get($id);
+            if ($lead && !empty($lead->phonenumber)) {
+                send_automation_whatsapp_reply($lead->id, $lead->phonenumber, $message, 'System Bulk Automation');
+                $success_count++;
+            }
+        }
+
+        echo json_encode([
+            'success' => true,
+            'message' => 'Successfully queued ' . $success_count . ' WhatsApp messages.'
+        ]);
         exit;
     }
 

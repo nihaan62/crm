@@ -150,6 +150,10 @@
                                     <a href="#" data-toggle="modal" data-table=".table-leads"
                                         data-target="#leads_bulk_actions"
                                         class="hide bulk-actions-btn table-btn"><?= _l('bulk_actions'); ?></a>
+                                    <a href="#" onclick="openBulkWhatsAppModal(); return false;"
+                                        class="hide bulk-actions-btn table-btn btn-success" style="background-color:#25d366; border-color:#25d366; color:#fff; margin-left: 5px;">
+                                        <i class="fa-brands fa-whatsapp"></i> Bulk Message
+                                    </a>
                                     <div class="modal fade bulk_actions" id="leads_bulk_actions" tabindex="-1"
                                         role="dialog">
                                         <div class="modal-dialog" role="document">
@@ -224,6 +228,38 @@
                                         <!-- /.modal-dialog -->
                                     </div>
                                     <!-- /.modal -->
+
+                                    <!-- Bulk WhatsApp Modal -->
+                                    <div class="modal fade" id="bulk_whatsapp_modal" tabindex="-1" role="dialog">
+                                        <div class="modal-dialog" role="document">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                                                    <h4 class="modal-title"><i class="fa-brands fa-whatsapp" style="color:#25d366; margin-right:8px;"></i>Send Bulk WhatsApp Message</h4>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <div class="form-group">
+                                                        <label for="bulk_wp_template" class="control-label">Select Message Template / Script</label>
+                                                        <select id="bulk_wp_template" class="selectpicker" data-width="100%">
+                                                            <option value="custom">Custom Message (Write below)</option>
+                                                            <option value="questionnaire">Loan Questionnaire Script</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label for="bulk_wp_message" class="control-label">Message Content</label>
+                                                        <textarea id="bulk_wp_message" class="form-control" rows="8" placeholder="Type your message here..."></textarea>
+                                                    </div>
+                                                    <div id="bulk_wp_selected_count" class="alert alert-info" style="font-weight:600; margin-bottom:0;">
+                                                        Selected Leads: <span id="bulk_wp_count_val">0</span>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                                                    <button type="button" class="btn btn-success" id="btn_send_bulk_wp"><i class="fa-brands fa-whatsapp"></i> Send Messages</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                     <?php
 
                               $table_data    = [];
@@ -688,6 +724,84 @@
         
         window.location.href = admin_url + 'cold_wp?ids=' + ids.join(',');
     }
+
+    var questionnaireText = "Hi 👋 Thanks for contacting us!\n\nTo assist you better, could you please share the following details:\n\n1️⃣ *What type of loan are you looking for?*\n• Personal Loan\n• Business Loan\n• Home/Mortgage Loan\n• Other\n\n2️⃣ *Loan Amount Required:* ₹_____\n\n3️⃣ *Your Location/City:* _______\n\n4️⃣ *Employment/Business:* _______\n\nOnce we have these details, our team will get in touch with you and guide you further. 😊";
+
+    function openBulkWhatsAppModal() {
+        var ids = [];
+        var rows = $('.table-leads').find('tbody tr');
+        $.each(rows, function() {
+            var checkbox = $(this).find('td:first-child input[type="checkbox"]');
+            if (checkbox.prop('checked') === true) {
+                ids.push(checkbox.val());
+            }
+        });
+        
+        if (ids.length === 0) {
+            alert_float('warning', 'Please select at least one lead.');
+            return;
+        }
+
+        $('#bulk_wp_count_val').text(ids.length);
+        $('#bulk_wp_template').val('custom').selectpicker('refresh');
+        $('#bulk_wp_message').val('');
+        $('#bulk_whatsapp_modal').modal('show');
+    }
+
+    $(document).on('change', '#bulk_wp_template', function() {
+        var val = $(this).val();
+        if (val === 'questionnaire') {
+            $('#bulk_wp_message').val(questionnaireText);
+        } else {
+            $('#bulk_wp_message').val('');
+        }
+    });
+
+    $(document).on('click', '#btn_send_bulk_wp', function() {
+        var ids = [];
+        var rows = $('.table-leads').find('tbody tr');
+        $.each(rows, function() {
+            var checkbox = $(this).find('td:first-child input[type="checkbox"]');
+            if (checkbox.prop('checked') === true) {
+                ids.push(checkbox.val());
+            }
+        });
+
+        var message = $('#bulk_wp_message').val().trim();
+        if (message === '') {
+            alert_float('warning', 'Please enter message content.');
+            return;
+        }
+
+        var btn = $(this);
+        btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Sending...');
+
+        $.ajax({
+            url: admin_url + 'leads/send_bulk_whatsapp_ajax',
+            type: 'POST',
+            dataType: 'json',
+            data: {
+                ids: ids,
+                message: message,
+                [csrfData.formattedName]: csrfData.hash
+            },
+            success: function(response) {
+                btn.prop('disabled', false).html('<i class="fa-brands fa-whatsapp"></i> Send Messages');
+                if (response.success) {
+                    alert_float('success', response.message);
+                    $('#bulk_whatsapp_modal').modal('hide');
+                    // Uncheck mass select
+                    $('#mass_select_all').prop('checked', false).trigger('change');
+                } else {
+                    alert_float('danger', response.message);
+                }
+            },
+            error: function() {
+                btn.prop('disabled', false).html('<i class="fa-brands fa-whatsapp"></i> Send Messages');
+                alert_float('danger', 'Failed to send bulk messages.');
+            }
+        });
+    });
 </script>
 </body>
 
