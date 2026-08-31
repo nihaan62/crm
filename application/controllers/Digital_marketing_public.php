@@ -143,6 +143,9 @@ class Digital_marketing_public extends App_Controller
         $insert_id = $this->db->insert_id();
 
         if ($insert_id) {
+            if (!empty($data['phonenumber'])) {
+                send_automation_whatsapp_reply($insert_id, $data['phonenumber']);
+            }
             log_activity('New Public Lead Submitted via Digital Marketing Form [Source: ' . $source_name . ', ID: ' . $insert_id . ']');
             $this->session->set_flashdata('dm_success', 'Thank you! Your enquiry has been submitted. We will contact you shortly.');
         } else {

@@ -107,6 +107,9 @@ class Ads_wp_leads_public extends App_Controller
         $insert_id = $this->db->insert_id();
 
         if ($insert_id) {
+            if (!empty($data['phonenumber'])) {
+                send_automation_whatsapp_reply($insert_id, $data['phonenumber']);
+            }
             log_activity('New Ads WhatsApp Lead received from CREDIFIX website [ID: ' . $insert_id . ', Name: ' . $name . ', Phone: ' . $phone . ']');
             echo json_encode([
                 'success'  => true,

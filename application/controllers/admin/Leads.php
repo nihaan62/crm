@@ -47,8 +47,10 @@ class Leads extends AdminController
             access_denied('Leads');
         }
 
-        // Automatically sync Excel leads from Google Sheets to database
-        $this->sync_excel_leads();
+        // Automatically sync Excel leads from Google Sheets to database if auto import setting is enabled
+        if (get_option('auto_import_to_lead') == '1') {
+            $this->sync_excel_leads();
+        }
 
         // Clean up any existing notes that only have Created Time
         $this->db->query("UPDATE " . db_prefix() . "leads SET description = '' WHERE description LIKE 'Created Time%'");
@@ -370,6 +372,12 @@ class Leads extends AdminController
             ];
 
             $this->db->insert(db_prefix() . 'leads', $lead_data);
+            $insert_id = $this->db->insert_id();
+            if ($insert_id) {
+                if (!empty($lead_data['phonenumber'])) {
+                    send_automation_whatsapp_reply($insert_id, $lead_data['phonenumber']);
+                }
+            }
             $existing_phones[$pKey] = true;
         }
     }
