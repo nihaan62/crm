@@ -21,7 +21,9 @@ class Ads_excel_list extends AdminController
         }
 
         $lead_count = (int) get_option('excel_lead_count');
-        if ($lead_count <= 0) {
+        if ($lead_count == -1) {
+            $lead_count = 999999;
+        } elseif ($lead_count <= 0) {
             $lead_count = 30;
         }
 
@@ -329,7 +331,9 @@ class Ads_excel_list extends AdminController
         }
 
         $lead_count = (int) get_option('excel_lead_count');
-        if ($lead_count <= 0) {
+        if ($lead_count == -1) {
+            $lead_count = 999999;
+        } elseif ($lead_count <= 0) {
             $lead_count = 30;
         }
 

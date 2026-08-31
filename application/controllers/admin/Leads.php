@@ -175,8 +175,10 @@ class Leads extends AdminController
         }
 
         $last_sync = get_option('last_excel_sync_time');
+        $excel_lead_count_setting = get_option('excel_lead_count');
+        $sync_interval = ($excel_lead_count_setting == '-1') ? 5 : 300;
         // Force synchronization if we have 0 leads in the DB under this source
-        if ($total_existing > 0 && $last_sync && (time() - (int)$last_sync) < 300) {
+        if ($total_existing > 0 && $last_sync && (time() - (int)$last_sync) < $sync_interval) {
             return;
         }
 
@@ -270,6 +272,9 @@ class Leads extends AdminController
         }
 
         $lead_count = get_option('excel_lead_count') ? (int)get_option('excel_lead_count') : 40;
+        if ($lead_count == -1) {
+            $lead_count = 999999;
+        }
         $processed_leads = 0;
 
         for ($i = 0; $i < count($lines); $i++) {

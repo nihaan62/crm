@@ -208,10 +208,12 @@ return App_table::find('leads')
         $rResult = $result['rResult'];
 
         if ($this->ci->input->post('lead_category') === 'ads_excel_list') {
-            $lead_count = get_option('excel_lead_count') ? (int)get_option('excel_lead_count') : 40;
-            $rResult = array_slice($rResult, 0, $lead_count);
-            $output['iTotalRecords'] = min((int)$output['iTotalRecords'], $lead_count);
-            $output['iTotalDisplayRecords'] = min((int)$output['iTotalDisplayRecords'], $lead_count);
+            $show_count = get_option('excel_lead_show_count') ? (int)get_option('excel_lead_show_count') : 30;
+            if ($show_count !== -1 && $show_count > 0) {
+                $rResult = array_slice($rResult, 0, $show_count);
+                $output['iTotalRecords'] = min((int)$output['iTotalRecords'], $show_count);
+                $output['iTotalDisplayRecords'] = min((int)$output['iTotalDisplayRecords'], $show_count);
+            }
         }
 
         $startIndex = (int)$this->ci->input->post('start') + 1;
