@@ -25,7 +25,20 @@ $rules = [
     App_table_filter::new('title', 'TextRule')->label(_l('lead_title')),
     App_table_filter::new('address', 'TextRule')->label(_l('lead_address')),
     App_table_filter::new('website', 'TextRule')->label(_l('lead_website')),
-    App_table_filter::new('description', 'TextRule')->label(_l('lead_description')),
+    App_table_filter::new('description', 'TextRule')->label('Notes / Description'),
+    App_table_filter::new('has_notes', 'SelectRule')->label('Notes Filter')->options(function () {
+        return [
+            ['value' => 'has_notes', 'label' => 'With Notes Only'],
+            ['value' => 'no_notes', 'label' => 'Without Notes']
+        ];
+    })->raw(function ($value) {
+        if ($value === 'has_notes') {
+            return db_prefix() . 'leads.description IS NOT NULL AND TRIM(' . db_prefix() . 'leads.description) != ""';
+        } elseif ($value === 'no_notes') {
+            return '(' . db_prefix() . 'leads.description IS NULL OR TRIM(' . db_prefix() . 'leads.description) = "")';
+        }
+        return '1=1';
+    }),
     App_table_filter::new('tags', 'SelectRule')
         ->label(_l('tags'))
         ->options(function ($ci) {
@@ -173,6 +186,34 @@ return App_table::find('leads')
             } elseif ($category === 'ads_excel_list') {
                 array_push($where, 'AND ' . db_prefix() . 'leads.source = (SELECT id FROM ' . db_prefix() . 'leads_sources WHERE name = "Ads Excel List" LIMIT 1)');
             }
+        }
+
+        // Status Wise Filter
+        $view_status_id = $this->ci->input->post('view_status_id');
+        if ($view_status_id !== null && $view_status_id !== '') {
+            if ($view_status_id === 'lost') {
+                array_push($where, 'AND ' . db_prefix() . 'leads.lost = 1');
+            } elseif ($view_status_id === 'junk') {
+                array_push($where, 'AND ' . db_prefix() . 'leads.junk = 1');
+            } elseif (is_numeric($view_status_id)) {
+                array_push($where, 'AND ' . db_prefix() . 'leads.status = ' . (int)$view_status_id);
+            }
+        }
+
+        // Has Notes Filter
+        $view_has_notes = $this->ci->input->post('view_has_notes');
+        if ($view_has_notes !== null && $view_has_notes !== '') {
+            if ($view_has_notes === 'has_notes') {
+                array_push($where, 'AND (' . db_prefix() . 'leads.description IS NOT NULL AND TRIM(' . db_prefix() . 'leads.description) != "")');
+            } elseif ($view_has_notes === 'no_notes') {
+                array_push($where, 'AND (' . db_prefix() . 'leads.description IS NULL OR TRIM(' . db_prefix() . 'leads.description) = "")');
+            }
+        }
+
+        // Notes Search Keyword
+        $view_notes_keyword = $this->ci->input->post('view_notes_keyword');
+        if ($view_notes_keyword !== null && $view_notes_keyword !== '') {
+            array_push($where, 'AND ' . db_prefix() . 'leads.description LIKE "%' . $this->ci->db->escape_like_str($view_notes_keyword) . '%"');
         }
 
         if (staff_cant('view', 'leads')) {

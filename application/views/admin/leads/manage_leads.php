@@ -27,8 +27,8 @@
                 </div>
 
                 <div class="_buttons tw-mb-2">
-                    <div class="tw-flex tw-items-center tw-justify-between tw-space-x-2 rtl:tw-space-x-reverse">
-                        <div class="tw-flex tw-items-center tw-space-x-1 rtl:tw-space-x-reverse">
+                    <div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-2">
+                        <div class="tw-flex tw-flex-wrap tw-items-center tw-gap-2">
                             <a href="#" onclick="init_lead(); return false;" class="btn btn-primary" id="new-lead-btn">
                                 <i class="fa-regular fa-plus"></i>
                                 <?= _l('new_lead'); ?>
@@ -57,7 +57,7 @@
                             </a>
                             <?php } ?>
                             <?php $selected_batch = $this->input->get('batch_name') ?? ''; ?>
-                            <div class="tw-inline-block" style="min-width: 150px; vertical-align: middle;">
+                            <div class="tw-inline-block" style="min-width: 140px; vertical-align: middle;">
                                 <select name="view_batch_name" class="selectpicker" data-width="100%" data-none-selected-text="All Sections" data-live-search="true">
                                     <option value="" <?= ($selected_batch === '') ? 'selected' : ''; ?>>All Sections</option>
                                     <?php 
@@ -70,7 +70,7 @@
                                 </select>
                             </div>
                             <?php $selected_cat = $this->input->get('category') ?? ''; ?>
-                            <div class="tw-inline-block" style="min-width: 180px; vertical-align: middle; margin-left: 5px;">
+                            <div class="tw-inline-block" style="min-width: 160px; vertical-align: middle;">
                                 <select name="view_lead_category" class="selectpicker" data-width="100%" data-none-selected-text="All Leads" data-live-search="true">
                                     <option value="" <?= ($selected_cat === '') ? 'selected' : ''; ?>>All Leads</option>
                                     <option value="converted" <?= ($selected_cat === 'converted') ? 'selected' : ''; ?>>Converted Leads</option>
@@ -78,6 +78,40 @@
                                     <option value="ads_wp" <?= ($selected_cat === 'ads_wp') ? 'selected' : ''; ?>>Ads WhatsApp Leads</option>
                                     <option value="ads_excel_list" <?= ($selected_cat === 'ads_excel_list') ? 'selected' : ''; ?>>Ads Excel List</option>
                                 </select>
+                            </div>
+                            <!-- Status Wise Filter -->
+                            <?php $selected_status = $this->input->get('status') ?? ''; ?>
+                            <div class="tw-inline-block" style="min-width: 160px; vertical-align: middle;">
+                                <select name="view_status_id" class="selectpicker" data-width="100%" data-none-selected-text="All Statuses" data-live-search="true">
+                                    <option value="" <?= ($selected_status === '') ? 'selected' : ''; ?>>All Statuses</option>
+                                    <?php if (!empty($statuses)) {
+                                        foreach ($statuses as $st) { 
+                                            $selected = ($selected_status == $st['id']) ? 'selected' : '';
+                                            echo '<option value="' . $st['id'] . '" ' . $selected . '>' . e($st['name']) . '</option>';
+                                        } 
+                                    } ?>
+                                    <option value="lost" <?= ($selected_status === 'lost') ? 'selected' : ''; ?>>Lost Leads</option>
+                                    <option value="junk" <?= ($selected_status === 'junk') ? 'selected' : ''; ?>>Junk Leads</option>
+                                </select>
+                            </div>
+                            <!-- Notes Filter (Has Notes / No Notes) -->
+                            <?php $selected_has_notes = $this->input->get('has_notes') ?? ''; ?>
+                            <div class="tw-inline-block" style="min-width: 150px; vertical-align: middle;">
+                                <select name="view_has_notes" class="selectpicker" data-width="100%" data-none-selected-text="All Notes">
+                                    <option value="" <?= ($selected_has_notes === '') ? 'selected' : ''; ?>>All Notes</option>
+                                    <option value="has_notes" <?= ($selected_has_notes === 'has_notes') ? 'selected' : ''; ?>>With Notes Only</option>
+                                    <option value="no_notes" <?= ($selected_has_notes === 'no_notes') ? 'selected' : ''; ?>>Without Notes</option>
+                                </select>
+                            </div>
+                            <!-- Search in Notes Input -->
+                            <?php $selected_notes_kw = $this->input->get('notes_keyword') ?? ''; ?>
+                            <div class="tw-inline-block" style="min-width: 170px; vertical-align: middle;">
+                                <div class="input-group input-group-sm" style="margin-bottom: 0; display: flex;">
+                                    <input type="text" name="view_notes_keyword" class="form-control" placeholder="Search in notes..." value="<?= e($selected_notes_kw); ?>" style="height: 34px; border-radius: 4px 0 0 4px;">
+                                    <span class="input-group-btn" style="width: auto;">
+                                        <button class="btn btn-default btn-notes-search" type="button" title="Search in Notes" style="height: 34px; border-radius: 0 4px 4px 0;"><i class="fa fa-search"></i></button>
+                                    </span>
+                                </div>
                             </div>
                         </div>
                         <div>
@@ -657,21 +691,54 @@
             activeWpButton = null;
         });
 
-        // Listen to DataTables pre-XHR event to append the custom filter parameter
+        // Listen to DataTables pre-XHR event to append custom filter parameters
         $('table.table-leads').on('preXhr.dt', function(e, settings, data) {
             data.batch_name = $('select[name="view_batch_name"]').val();
             data.lead_category = $('select[name="view_lead_category"]').val();
+            data.view_status_id = $('select[name="view_status_id"]').val();
+            data.view_has_notes = $('select[name="view_has_notes"]').val();
+            data.view_notes_keyword = $('input[name="view_notes_keyword"]').val();
         });
+
+        function reloadLeadsTable() {
+            if ($.fn.DataTable.isDataTable('.table-leads')) {
+                $('.table-leads').DataTable().ajax.reload();
+            }
+        }
+
+        function updateLeadsFilterUrl() {
+            var category = $('select[name="view_lead_category"]').val() || '';
+            var batch = $('select[name="view_batch_name"]').val() || '';
+            var status = $('select[name="view_status_id"]').val() || '';
+            var has_notes = $('select[name="view_has_notes"]').val() || '';
+            var notes_kw = $('input[name="view_notes_keyword"]').val() || '';
+
+            var params = new URLSearchParams(window.location.search);
+            if (category) { params.set('category', category); } else { params.delete('category'); }
+            if (batch) { params.set('batch_name', batch); } else { params.delete('batch_name'); }
+            if (status) { params.set('status', status); } else { params.delete('status'); }
+            if (has_notes) { params.set('has_notes', has_notes); } else { params.delete('has_notes'); }
+            if (notes_kw) { params.set('notes_keyword', notes_kw); } else { params.delete('notes_keyword'); }
+
+            var newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+            if (window.history && window.history.replaceState) {
+                window.history.replaceState(null, '', newUrl);
+            }
+        }
 
         function handleLeadFiltersChange() {
             var category = $('select[name="view_lead_category"]').val();
             var batch = $('select[name="view_batch_name"]').val();
-            
-            var url = admin_url + 'leads?category=' + category;
-            if (batch) {
-                url += '&batch_name=' + encodeURIComponent(batch);
+
+            if (category === 'ads_excel_list') {
+                var url = admin_url + 'leads?category=' + category;
+                if (batch) url += '&batch_name=' + encodeURIComponent(batch);
+                window.location.href = url;
+                return;
             }
-            window.location.href = url;
+
+            updateLeadsFilterUrl();
+            reloadLeadsTable();
         }
 
         $('body').on('change', 'select[name="view_lead_category"]', function() {
@@ -680,6 +747,25 @@
 
         $('body').on('change', 'select[name="view_batch_name"]', function() {
             handleLeadFiltersChange();
+        });
+
+        $('body').on('change', 'select[name="view_status_id"], select[name="view_has_notes"]', function() {
+            updateLeadsFilterUrl();
+            reloadLeadsTable();
+        });
+
+        var notesSearchTimer;
+        $('body').on('keyup', 'input[name="view_notes_keyword"]', function() {
+            clearTimeout(notesSearchTimer);
+            notesSearchTimer = setTimeout(function() {
+                updateLeadsFilterUrl();
+                reloadLeadsTable();
+            }, 400);
+        });
+
+        $('body').on('click', '.btn-notes-search', function() {
+            updateLeadsFilterUrl();
+            reloadLeadsTable();
         });
 
         // Listen to change/blur on the lead notes textarea to save automatically via AJAX
