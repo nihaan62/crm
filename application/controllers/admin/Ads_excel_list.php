@@ -253,21 +253,7 @@ class Ads_excel_list extends AdminController
         // Clean phone number format for lead creation
         $phoneClean = preg_replace('/[^0-9+]/', '', $phone);
 
-        // Format extra questionnaire fields into description
         $description = '';
-        foreach ($this->input->post() as $key => $val) {
-            if (in_array($key, ['name', 'phone', 'email', 'db_lead'])) {
-                continue;
-            }
-            // Skip Perfex CRM global properties like CSRF token
-            if ($key === $this->security->get_csrf_token_name()) {
-                continue;
-            }
-            if (!empty($val) && is_string($val)) {
-                $cleanKey = ucwords(str_replace(['_', '?', '.'], [' ', '', ''], $key));
-                $description .= $cleanKey . ': ' . $val . "\n";
-            }
-        }
 
         // Determine Loan Type
         $loan_type = 'Personal';

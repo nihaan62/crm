@@ -52,8 +52,8 @@ class Leads extends AdminController
             $this->sync_excel_leads();
         }
 
-        // Clean up any existing notes that only have Created Time
-        $this->db->query("UPDATE " . db_prefix() . "leads SET description = '' WHERE description LIKE 'Created Time%'");
+        // Clean up any existing notes that contain auto-generated metadata
+        $this->db->query("UPDATE " . db_prefix() . "leads SET description = '' WHERE description LIKE '%Id: l:%' OR description LIKE '%Ad Id:%' OR description LIKE '%Campaign Name:%' OR description LIKE '%Form Name:%' OR description LIKE '%Lead Status:%' OR description LIKE '%Platform:%' OR description LIKE 'Created Time%' OR description LIKE 'Service:%'");
 
         $data['switch_kanban'] = true;
 
@@ -333,20 +333,6 @@ class Leads extends AdminController
             }
 
             $description = '';
-            foreach ($rawHeaders as $idx => $h) {
-                if (in_array($idx, [$phoneIdx, $nameIdx, $emailIdx])) {
-                    continue;
-                }
-                $hTrim = trim($h);
-                $hLower = str_replace('_', ' ', strtolower($hTrim));
-                if (strpos($hLower, 'created') !== false || strpos($hLower, 'time') !== false) {
-                    continue;
-                }
-                if (!empty($hTrim) && isset($rowValues[$idx]) && !empty(trim($rowValues[$idx]))) {
-                    $cleanKey = ucwords(str_replace(['_', '?', '.'], [' ', '', ''], $hTrim));
-                    $description .= $cleanKey . ': ' . trim($rowValues[$idx]) . "\n";
-                }
-            }
 
             // Determine Loan Type
             $loan_type = 'Personal';

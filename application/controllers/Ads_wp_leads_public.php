@@ -76,10 +76,7 @@ class Ads_wp_leads_public extends App_Controller
             ->get(db_prefix() . 'leads_status')->row();
         $status_id = $first_status ? $first_status->id : 1;
 
-        // Build description from service + amount
         $description = '';
-        if ($service) $description .= 'Service: ' . $service;
-        if ($amount)  $description .= ($description ? ' | ' : '') . 'Loan Amount: ₹' . $amount;
 
         $loan_type = 'Personal';
         if (strpos(strtolower($service), 'business') !== false) {
