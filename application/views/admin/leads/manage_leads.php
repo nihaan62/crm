@@ -80,7 +80,7 @@
                                 </select>
                             </div>
                             <!-- Status Wise Filter -->
-                            <?php $selected_status = $this->input->get('status') ?? ''; ?>
+                            <?php $selected_status = $this->input->get('status_id') ?: ($this->input->get('status') ?: ''); ?>
                             <div class="tw-inline-block" style="min-width: 160px; vertical-align: middle;">
                                 <select name="view_status_id" class="selectpicker" data-width="100%" data-none-selected-text="All Statuses" data-live-search="true">
                                     <option value="" <?= ($selected_status === '') ? 'selected' : ''; ?>>All Statuses</option>
@@ -727,45 +727,50 @@
         }
 
         function handleLeadFiltersChange() {
-            var category = $('select[name="view_lead_category"]').val();
-            var batch = $('select[name="view_batch_name"]').val();
+            var category = $('select[name="view_lead_category"]').val() || '';
+            var batch = $('select[name="view_batch_name"]').val() || '';
+            var status = $('select[name="view_status_id"]').val() || '';
+            var has_notes = $('select[name="view_has_notes"]').val() || '';
+            var notes_kw = $('input[name="view_notes_keyword"]').val() || '';
 
+            var params = new URLSearchParams();
+            if (category) params.set('category', category);
+            if (batch) params.set('batch_name', batch);
+            if (status) params.set('status_id', status);
+            if (has_notes) params.set('has_notes', has_notes);
+            if (notes_kw) params.set('notes_keyword', notes_kw);
+
+            var newUrl = admin_url + 'leads' + (params.toString() ? '?' + params.toString() : '');
+            
             if (category === 'ads_excel_list') {
-                var url = admin_url + 'leads?category=' + category;
-                if (batch) url += '&batch_name=' + encodeURIComponent(batch);
-                window.location.href = url;
+                window.location.href = newUrl;
                 return;
             }
 
-            updateLeadsFilterUrl();
-            reloadLeadsTable();
+            if (window.history && window.history.replaceState) {
+                window.history.replaceState(null, '', newUrl);
+            }
+            if ($.fn.DataTable.isDataTable('.table-leads')) {
+                $('.table-leads').DataTable().ajax.reload();
+            } else {
+                window.location.href = newUrl;
+            }
         }
 
-        $('body').on('change', 'select[name="view_lead_category"]', function() {
+        $('body').on('change', 'select[name="view_lead_category"], select[name="view_batch_name"], select[name="view_status_id"], select[name="view_has_notes"]', function() {
             handleLeadFiltersChange();
-        });
-
-        $('body').on('change', 'select[name="view_batch_name"]', function() {
-            handleLeadFiltersChange();
-        });
-
-        $('body').on('change', 'select[name="view_status_id"], select[name="view_has_notes"]', function() {
-            updateLeadsFilterUrl();
-            reloadLeadsTable();
         });
 
         var notesSearchTimer;
         $('body').on('keyup', 'input[name="view_notes_keyword"]', function() {
             clearTimeout(notesSearchTimer);
             notesSearchTimer = setTimeout(function() {
-                updateLeadsFilterUrl();
-                reloadLeadsTable();
+                handleLeadFiltersChange();
             }, 400);
         });
 
         $('body').on('click', '.btn-notes-search', function() {
-            updateLeadsFilterUrl();
-            reloadLeadsTable();
+            handleLeadFiltersChange();
         });
 
         // Listen to change/blur on the lead notes textarea to save automatically via AJAX

@@ -170,13 +170,13 @@ return App_table::find('leads')
             $where[] = $filtersWhere;
         }
 
-        if ($this->ci->input->post('batch_name')) {
-            $batch_name = $this->ci->input->post('batch_name');
+        if ($this->ci->input->post('batch_name') || $this->ci->input->get('batch_name')) {
+            $batch_name = $this->ci->input->post('batch_name') ?: $this->ci->input->get('batch_name');
             array_push($where, 'AND ' . db_prefix() . 'leads.batch_name = "' . $this->ci->db->escape_str($batch_name) . '"');
         }
 
-        if ($this->ci->input->post('lead_category')) {
-            $category = $this->ci->input->post('lead_category');
+        if ($this->ci->input->post('lead_category') || $this->ci->input->get('category')) {
+            $category = $this->ci->input->post('lead_category') ?: $this->ci->input->get('category');
             if ($category === 'converted') {
                 array_push($where, 'AND ' . db_prefix() . 'leads.id IN (SELECT leadid FROM ' . db_prefix() . 'clients)');
             } elseif ($category === 'cold_wp') {
@@ -189,19 +189,19 @@ return App_table::find('leads')
         }
 
         // Status Wise Filter
-        $view_status_id = $this->ci->input->post('view_status_id');
+        $view_status_id = $this->ci->input->post('view_status_id') ?: ($this->ci->input->get('status_id') ?: $this->ci->input->get('status'));
         if ($view_status_id !== null && $view_status_id !== '') {
             if ($view_status_id === 'lost') {
                 array_push($where, 'AND ' . db_prefix() . 'leads.lost = 1');
             } elseif ($view_status_id === 'junk') {
                 array_push($where, 'AND ' . db_prefix() . 'leads.junk = 1');
             } elseif (is_numeric($view_status_id)) {
-                array_push($where, 'AND ' . db_prefix() . 'leads.status = ' . (int)$view_status_id);
+                array_push($where, 'AND (' . db_prefix() . 'leads.status = ' . (int)$view_status_id . ' AND ' . db_prefix() . 'leads.lost = 0 AND ' . db_prefix() . 'leads.junk = 0)');
             }
         }
 
         // Has Notes Filter
-        $view_has_notes = $this->ci->input->post('view_has_notes');
+        $view_has_notes = $this->ci->input->post('view_has_notes') ?: $this->ci->input->get('has_notes');
         if ($view_has_notes !== null && $view_has_notes !== '') {
             if ($view_has_notes === 'has_notes') {
                 array_push($where, 'AND (' . db_prefix() . 'leads.description IS NOT NULL AND TRIM(' . db_prefix() . 'leads.description) != "")');
@@ -211,7 +211,7 @@ return App_table::find('leads')
         }
 
         // Notes Search Keyword
-        $view_notes_keyword = $this->ci->input->post('view_notes_keyword');
+        $view_notes_keyword = $this->ci->input->post('view_notes_keyword') ?: $this->ci->input->get('notes_keyword');
         if ($view_notes_keyword !== null && $view_notes_keyword !== '') {
             array_push($where, 'AND ' . db_prefix() . 'leads.description LIKE "%' . $this->ci->db->escape_like_str($view_notes_keyword) . '%"');
         }
