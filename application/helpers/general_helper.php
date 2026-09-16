@@ -1101,11 +1101,136 @@ if (! function_exists('previous_url')) {
     }
 }
 
-if (!function_exists('is_ai_provider_enabled')) {
-    function is_ai_provider_enabled(): bool
+if (!function_exists('convert_google_sheet_url_to_csv')) {
+    /**
+     * Convert any Google Sheet URL (edit, share, tab/gid, or web published) into a CSV export URL.
+     *
+     * @param string $sheet_url
+     * @return string
+     */
+    function convert_google_sheet_url_to_csv($sheet_url)
     {
-        $providers = \app\services\ai\AiProviderRegistry::getAllProviders();
-        return  !empty($providers) && isset($providers[get_option('ai_provider')]);
+        $sheet_url = trim((string) $sheet_url);
+        if (empty($sheet_url)) {
+            return '';
+        }
+
+        // If it's already an export link
+        if (strpos($sheet_url, 'format=csv') !== false || strpos($sheet_url, 'output=csv') !== false) {
+            return $sheet_url;
+        }
+
+        // Extract gid (sheet/tab id) if present
+        $gid = '';
+        if (preg_match('/[#&?]gid=([0-9]+)/', $sheet_url, $gm)) {
+            $gid = $gm[1];
+        }
+
+        // Check for Published to web URL (e.g. /spreadsheets/d/e/2PACX-.../pubhtml)
+        if (preg_match('/spreadsheets\/d\/e\/([a-zA-Z0-9-_]+)/', $sheet_url, $m)) {
+            return 'https://docs.google.com/spreadsheets/d/e/' . $m[1] . '/pub?output=csv' . ($gid !== '' ? '&gid=' . $gid : '');
+        }
+
+        // Check for standard Google Sheet (e.g. /spreadsheets/d/1BxiMVs.../edit)
+        if (preg_match('/spreadsheets\/d\/([a-zA-Z0-9-_]+)/', $sheet_url, $m)) {
+            return 'https://docs.google.com/spreadsheets/d/' . $m[1] . '/export?format=csv' . ($gid !== '' ? '&gid=' . $gid : '');
+        }
+
+        return $sheet_url;
+    }
+}
+
+if (!function_exists('fetch_google_sheet_csv')) {
+    /**
+     * Fetch Google Sheet CSV data with robust error detection for private sheets, invalid IDs, and network errors.
+     *
+     * @param string $sheet_url
+     * @param string &$fetch_error
+     * @return string
+     */
+    function fetch_google_sheet_csv($sheet_url, &$fetch_error = '')
+    {
+        $sheet_url = trim((string) $sheet_url);
+        $fetch_error = '';
+
+        if (empty($sheet_url)) {
+            $fetch_error = 'Google Sheet URL is not configured. Please set it in Settings -> General.';
+            return '';
+        }
+
+        // Detect Google Drive file preview links
+        if (strpos($sheet_url, 'drive.google.com/file') !== false) {
+            $fetch_error = 'The provided link is a Google Drive file preview link. Please open the file in Google Sheets and copy the spreadsheet link, or export it to Google Sheets.';
+            return '';
+        }
+
+        $csv_url = convert_google_sheet_url_to_csv($sheet_url);
+        $csvContent = '';
+        $curl_err = '';
+        $httpCode = 0;
+
+        if (function_exists('curl_init')) {
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $csv_url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            if (!ini_get('open_basedir')) {
+                curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+            }
+            curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+            curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)');
+            $csvContent = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curl_err = curl_error($ch);
+            curl_close($ch);
+        }
+
+        // Fallback to stream context if cURL was empty
+        if (empty($csvContent)) {
+            $opts = [
+                'http' => [
+                    'method' => 'GET',
+                    'header' => "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)\r\n",
+                    'timeout' => 15,
+                    'follow_location' => 1,
+                ],
+                'ssl' => [
+                    'verify_peer' => false,
+                    'verify_peer_name' => false,
+                ]
+            ];
+            $context = stream_context_create($opts);
+            $csvContent = @file_get_contents($csv_url, false, $context);
+        }
+
+        // Check specific HTTP codes
+        if ($httpCode === 404) {
+            $fetch_error = 'Google Sheet not found (HTTP 404). Please verify your Google Sheet URL.';
+            return '';
+        }
+
+        if ($httpCode === 401 || $httpCode === 403) {
+            $fetch_error = 'The Google Sheet is private (HTTP ' . $httpCode . '). Please open the sheet, click "Share" (top right), and change access to "Anyone with the link" (Viewer).';
+            return '';
+        }
+
+        // Check if returned content is HTML (Google Login / Permission redirect)
+        if (!empty($csvContent) && (strpos($csvContent, '<!DOCTYPE html>') !== false || strpos($csvContent, '<html') !== false)) {
+            $fetch_error = 'The Google Sheet is private. Please open the sheet, click "Share" (top right), and change access to "Anyone with the link" (Viewer).';
+            return '';
+        }
+
+        if (empty($csvContent)) {
+            if (!empty($curl_err)) {
+                $fetch_error = 'cURL error: ' . $curl_err . ' (HTTP Status ' . $httpCode . '). Please check internet connection.';
+            } else {
+                $fetch_error = 'Failed to fetch Google Sheet data. Please ensure the Google Sheet is shared as "Anyone with the link can view" and the URL is correct.';
+            }
+            return '';
+        }
+
+        return $csvContent;
     }
 }
 ?>

@@ -299,9 +299,22 @@
                     <i class="fa-solid fa-file-excel"></i>
                     <h5>No Leads Found</h5>
                     <?php if (!empty($fetch_error)): ?>
-                        <div class="alert alert-danger" style="display:inline-block; max-width:600px; margin-top:10px; font-weight:600; text-align:left;">
-                            <i class="fa fa-exclamation-triangle" style="font-size:16px; display:inline; margin-right:8px; color:#a94442;"></i>
-                            <?= e($fetch_error); ?>
+                        <div class="alert alert-danger" style="display:inline-block; max-width:680px; margin-top:14px; text-align:left; border-radius:8px; line-height: 1.6;">
+                            <div style="font-weight:700; font-size:14px; margin-bottom:8px;">
+                                <i class="fa fa-exclamation-triangle" style="font-size:16px; margin-right:6px; color:#a94442;"></i>
+                                <?= e($fetch_error); ?>
+                            </div>
+                            <hr style="margin: 8px 0; border-top: 1px solid rgba(169, 68, 66, 0.2);">
+                            <div style="font-size:12.5px;">
+                                <strong>How to fix:</strong>
+                                <ol style="padding-left:18px; margin: 4px 0 10px 0;">
+                                    <li>Open your Google Sheet: <a href="<?= e($sheet_url); ?>" target="_blank" class="alert-link" style="text-decoration:underline;"><strong>Open Google Sheet <i class="fa fa-external-link"></i></strong></a></li>
+                                    <li>Click the blue <strong>"Share"</strong> button in the top right corner.</li>
+                                    <li>Under <em>General access</em>, change <strong>"Restricted"</strong> to <strong>"Anyone with the link"</strong> (role: <em>Viewer</em>).</li>
+                                    <li>Click <strong>Done</strong>, then return here and refresh the page.</li>
+                                </ol>
+                                <a href="<?= admin_url('settings?group=general'); ?>" class="btn btn-sm btn-default" style="font-weight:600;"><i class="fa fa-cog"></i> Check / Update Sheet URL in Settings</a>
+                            </div>
                         </div>
                     <?php else: ?>
                         <p>No leads could be fetched from the Google Sheet.<br>

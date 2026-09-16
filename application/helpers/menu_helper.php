@@ -216,6 +216,14 @@ function app_init_admin_sidebar_menu_items()
                 'position' => 15,
                 'badge'    => [],
             ]);
+            
+            $CI->app_menu->add_sidebar_children_item('leads', [
+                'slug'     => 'trading-cold-message',
+                'name'     => 'Trading Cold Message',
+                'href'     => admin_url('trading_cold_message'),
+                'position' => 16,
+                'badge'    => [],
+            ]);
         }
 
         if (is_admin()) {

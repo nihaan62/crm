@@ -183,32 +183,9 @@ class Leads extends AdminController
         }
 
         $sheet_url = get_option('excel_sheet_url') ?: 'https://docs.google.com/spreadsheets/d/17hEUmsz8Q8Q32KDKO7qi0uTdhAXIDz7vRvPmkMS7Yv8/edit?usp=sharing';
-        
-        // Convert sharing link to export CSV link
-        $csv_url = $sheet_url;
-        if (strpos($sheet_url, '/edit') !== false) {
-            $csv_url = preg_replace('/\/edit.*/', '/export?format=csv', $sheet_url);
-        } elseif (strpos($sheet_url, '/pubhtml') !== false) {
-            $csv_url = str_replace('/pubhtml', '/pub?output=csv', $sheet_url);
-        }
-
-        $context = stream_context_create([
-            'http' => [
-                'timeout' => 5,
-                'follow_location' => true
-            ],
-            'ssl' => [
-                'verify_peer' => false,
-                'verify_peer_name' => false
-            ]
-        ]);
-        
-        $csvContent = @file_get_contents($csv_url, false, $context);
+        $sync_error = '';
+        $csvContent = fetch_google_sheet_csv($sheet_url, $sync_error);
         if (empty($csvContent)) {
-            return;
-        }
-
-        if (strpos($csvContent, '<!DOCTYPE html>') !== false || strpos($csvContent, '<html') !== false) {
             return;
         }
 
